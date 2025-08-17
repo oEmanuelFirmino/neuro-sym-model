@@ -32,13 +32,17 @@ def main():
         "--config",
         type=str,
         default="config.yaml",
-        help="Caminho para o arquivo de configuração.",
+        help="Caminho para o arquivo de configuração usado no treinamento.",
     )
     args = parser.parse_args()
 
     config_path = PROJECT_ROOT / args.config
-    with open(config_path, "r") as f:
-        config = yaml.safe_load(f)
+    try:
+        with open(config_path, "r") as f:
+            config = yaml.safe_load(f)
+    except FileNotFoundError:
+        print(f"❌ Erro: Arquivo de configuração não encontrado em '{config_path}'.")
+        sys.exit(1)
 
     print(f"--- Carregando Arquitetura do Modelo de '{config_path}' ---")
 

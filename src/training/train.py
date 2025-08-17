@@ -1,6 +1,7 @@
 import sys
 import yaml
 import logging
+import argparse
 from pathlib import Path
 from typing import List, Dict
 
@@ -21,7 +22,7 @@ except ImportError:
 
 
 class TrainingLogger:
-
+    # (sem alterações no logger)
     def __init__(self, log_level=logging.INFO):
         self.logger = self._setup_logger(log_level)
 
@@ -61,13 +62,30 @@ class TrainingLogger:
 
 
 def main():
+    parser = argparse.ArgumentParser(
+        description="Treina um modelo neuro-simbólico a partir de uma configuração."
+    )
+    parser.add_argument(
+        "--config",
+        type=str,
+        default="config.yaml",
+        help="Caminho para o arquivo de configuração YAML.",
+    )
+    args = parser.parse_args()
+
     logger = TrainingLogger()
     logger.print_banner("Loop de Treinamento Neuro-Simbólico a partir de Arquivos")
 
-    config_path = PROJECT_ROOT / "config.yaml"
+    config_path = PROJECT_ROOT / args.config
     logger.logger.info(f"Carregando configuração de: {config_path}")
-    with open(config_path, "r") as f:
-        config = yaml.safe_load(f)
+    try:
+        with open(config_path, "r") as f:
+            config = yaml.safe_load(f)
+    except FileNotFoundError:
+        logger.logger.error(
+            f"❌ Erro: Arquivo de configuração não encontrado em '{config_path}'."
+        )
+        sys.exit(1)
 
     logger.print_section("1. Carregando Base de Conhecimento")
     data_path = PROJECT_ROOT / config["data_path"]
