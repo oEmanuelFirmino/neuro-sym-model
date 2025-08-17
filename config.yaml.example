@@ -17,6 +17,7 @@ data_path: "data/socrates"
 domain_file: "domain.csv"
 facts_file: "facts.csv"
 rules_file: "rules.txt"
+test_facts_file: "test_facts.csv"
 
 # Caminho para salvar o modelo treinado
 model_save_path: "trained_models/socrates_model.json"

@@ -22,7 +22,7 @@ except ImportError:
 
 
 class TrainingLogger:
-    # (sem alterações no logger)
+
     def __init__(self, log_level=logging.INFO):
         self.logger = self._setup_logger(log_level)
 
@@ -53,17 +53,23 @@ class TrainingLogger:
         )
 
     def log_final_results(self, grounding_env: GroundingEnv):
-        self.logger.info("\n--- Resultados Finais ---")
+        self.logger.info("\n--- Resultados Finais do Treinamento ---")
         self.logger.info("Embeddings das constantes após o treinamento:")
         for name, tensor in grounding_env.items():
             flat_data = tensor._flatten(tensor.data)
             data_str = ", ".join([f"{x:.4f}" for x in flat_data])
             self.logger.info(f"  🔹 {name}: [{data_str}]")
 
+    def log_evaluation_results(self, avg_truth_value: float):
+        self.logger.info("\n--- Avaliação no Conjunto de Teste ---")
+        self.logger.info(
+            f"  🎯 Satisfação Média nos Factos de Teste: {avg_truth_value:.4f}"
+        )
+
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Treina um modelo neuro-simbólico a partir de uma configuração."
+        description="Treina e avalia um modelo neuro-simbólico."
     )
     parser.add_argument(
         "--config",
@@ -74,7 +80,7 @@ def main():
     args = parser.parse_args()
 
     logger = TrainingLogger()
-    logger.print_banner("Loop de Treinamento Neuro-Simbólico a partir de Arquivos")
+    logger.print_banner("Treinamento e Avaliação Neuro-Simbólica")
 
     config_path = PROJECT_ROOT / args.config
     logger.logger.info(f"Carregando configuração de: {config_path}")
@@ -114,7 +120,7 @@ def main():
     facts_with_truth_values = loader.load_facts(config["facts_file"])
     rules = loader.load_rules(config["rules_file"])
     logger.logger.info(
-        f"{len(facts_with_truth_values)} fatos e {len(rules)} regras carregados."
+        f"{len(facts_with_truth_values)} fatos de treino e {len(rules)} regras carregados."
     )
 
     all_parameters = list(grounding_env.values())
@@ -151,19 +157,42 @@ def main():
 
     logger.log_final_results(grounding_env)
 
-    logger.print_section("3. Salvando Modelo")
+    logger.print_section("3. Avaliando o Modelo")
+    test_facts = loader.load_facts(config["test_facts_file"])
+    logger.logger.info(f"{len(test_facts)} factos de teste carregados.")
+
+    total_truth_value = 0.0
+    with open("test_results.log", "w") as f:
+        f.write("Resultados da Avaliacao\n" + "=" * 25 + "\n")
+        for fact_formula, expected_truth in test_facts:
+            predicted_truth_tensor = interpreter.eval_formula(fact_formula, {})
+            predicted_truth = predicted_truth_tensor._flatten(
+                predicted_truth_tensor.data
+            )[0]
+            total_truth_value += predicted_truth
+            f.write(f"Formula: {fact_formula}\n")
+            f.write(f"  -> Grau de Verdade Esperado: {expected_truth:.4f}\n")
+            f.write(f"  -> Grau de Verdade Previsto:  {predicted_truth:.4f}\n\n")
+
+    avg_truth_value = total_truth_value / len(test_facts) if test_facts else 0.0
+    logger.log_evaluation_results(avg_truth_value)
+    logger.logger.info(
+        "Resultados detalhados da avaliação foram salvos em 'test_results.log'."
+    )
+
+    logger.print_section("4. Salvando Modelo")
     model_save_path = PROJECT_ROOT / config["model_save_path"]
     save_model(model_save_path, predicate_map, grounding_env)
     logger.logger.info(f"Modelo salvo em: {model_save_path}")
 
-    logger.logger.info("\n🎉 Treinamento concluído com sucesso!")
+    logger.logger.info("\n🎉 Processo concluído com sucesso!")
 
 
 if __name__ == "__main__":
     try:
         main()
     except Exception as e:
-        print(f"\n❌ Erro fatal durante o treinamento: {e}")
+        print(f"\n❌ Erro fatal: {e}")
         import traceback
 
         traceback.print_exc()
