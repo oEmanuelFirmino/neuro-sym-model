@@ -63,7 +63,9 @@ class Tensor:
     def _apply_recursive(a, b, op):
         if isinstance(a, list):
             if isinstance(b, list):
-                if len(a) != len(b) and len(b) != 0:
+                if len(a) > 0 and (
+                    not isinstance(b, list) or len(b) == 0 or len(a) != len(b)
+                ):
                     return [Tensor._apply_recursive(x, b, op) for x in a]
                 return [Tensor._apply_recursive(x, y, op) for x, y in zip(a, b)]
             else:
@@ -95,7 +97,9 @@ class Tensor:
             if self.requires_grad:
                 grad_to_add = out.grad.data
                 if self.shape != out.shape:
-                    summed_grad = [sum(row) for row in grad_to_add]
+                    summed_grad = grad_to_add
+                    for _ in range(len(out.shape) - len(self.shape)):
+                        summed_grad = [sum(row) for row in summed_grad]
                     grad_to_add = summed_grad
                 self.grad.data = self._apply_recursive(
                     self.grad.data, grad_to_add, lambda a, b: a + b
@@ -103,7 +107,9 @@ class Tensor:
             if other_tensor.requires_grad:
                 grad_to_add = out.grad.data
                 if other_tensor.shape != out.shape:
-                    summed_grad = [sum(row) for row in grad_to_add]
+                    summed_grad = grad_to_add
+                    for _ in range(len(out.shape) - len(other_tensor.shape)):
+                        summed_grad = [sum(row) for row in summed_grad]
                     grad_to_add = summed_grad
                 other_tensor.grad.data = self._apply_recursive(
                     other_tensor.grad.data, grad_to_add, lambda a, b: a + b
@@ -125,7 +131,9 @@ class Tensor:
                     other_tensor.data, out.grad.data, lambda a, b: a * b
                 )
                 if self.shape != out.shape:
-                    summed_grad = [sum(row) for row in grad_data]
+                    summed_grad = grad_data
+                    for _ in range(len(out.shape) - len(self.shape)):
+                        summed_grad = [sum(row) for row in summed_grad]
                     grad_data = summed_grad
                 self.grad.data = self._apply_recursive(
                     self.grad.data, grad_data, lambda a, b: a + b
@@ -135,7 +143,9 @@ class Tensor:
                     self.data, out.grad.data, lambda a, b: a * b
                 )
                 if other_tensor.shape != out.shape:
-                    summed_grad = [sum(row) for row in grad_data]
+                    summed_grad = grad_data
+                    for _ in range(len(out.shape) - len(other_tensor.shape)):
+                        summed_grad = [sum(row) for row in summed_grad]
                     grad_data = summed_grad
                 other_tensor.grad.data = self._apply_recursive(
                     other_tensor.grad.data, grad_data, lambda a, b: a + b
@@ -214,6 +224,22 @@ class Tensor:
             if self.requires_grad:
                 grad_data = self._apply_recursive(
                     out.data, out.grad.data, lambda a, b: a * b
+                )
+                self.grad.data = self._apply_recursive(
+                    self.grad.data, grad_data, lambda a, b: a + b
+                )
+
+        out._backward = _backward
+        return out
+
+    def relu(self) -> "Tensor":
+        out_data = self._apply_recursive(self.data, None, lambda a: max(0, a))
+        out = self._wrap_result(out_data, "ReLU", (self,))
+
+        def _backward():
+            if self.requires_grad:
+                grad_data = self._apply_recursive(
+                    self.data, out.grad.data, lambda a, b: b if a > 0 else 0
                 )
                 self.grad.data = self._apply_recursive(
                     self.grad.data, grad_data, lambda a, b: a + b
