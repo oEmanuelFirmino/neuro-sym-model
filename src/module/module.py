@@ -1,6 +1,7 @@
 import random
 import math
 from abc import ABC, abstractmethod
+from typing import Dict
 from ..tensor import Tensor
 
 
@@ -30,6 +31,19 @@ class Module(ABC):
     def zero_grad(self):
         for p in self.parameters():
             p.zero_grad()
+
+    def state_dict(self) -> Dict[str, list]:
+        state = {name: p.data for name, p in self._parameters.items()}
+        for name, module in self._modules.items():
+            state[name] = module.state_dict()
+        return state
+
+    def load_state_dict(self, state_dict: Dict):
+        for name, data in state_dict.items():
+            if name in self._parameters:
+                self._parameters[name].data = data
+            elif name in self._modules:
+                self._modules[name].load_state_dict(data)
 
     @abstractmethod
     def forward(self, *inputs):

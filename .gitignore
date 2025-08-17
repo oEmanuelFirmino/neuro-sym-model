@@ -7,6 +7,7 @@ __pycache__/
 *.so
 
 data/
+trained_models/
 config.yaml
 
 # Distribution / packaging

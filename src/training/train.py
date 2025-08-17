@@ -4,7 +4,8 @@ import logging
 from pathlib import Path
 from typing import List, Dict
 
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+PROJECT_ROOT = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
 
 try:
     from src.tensor import Tensor
@@ -13,6 +14,7 @@ try:
     from src.interpreter import Interpreter, PredicateMap, GroundingEnv
     from src.training.optimizer import SGD
     from src.data.loader import KnowledgeBaseLoader
+    from src.training.saver import save_model
 except ImportError:
     print("❌ Erro ao importar um ou mais módulos necessários para o treinamento.")
     sys.exit(1)
@@ -58,15 +60,18 @@ class TrainingLogger:
             self.logger.info(f"  🔹 {name}: [{data_str}]")
 
 
-def main(config_path="config.yaml"):
+def main():
     logger = TrainingLogger()
     logger.print_banner("Loop de Treinamento Neuro-Simbólico a partir de Arquivos")
 
+    config_path = PROJECT_ROOT / "config.yaml"
+    logger.logger.info(f"Carregando configuração de: {config_path}")
     with open(config_path, "r") as f:
         config = yaml.safe_load(f)
 
     logger.print_section("1. Carregando Base de Conhecimento")
-    loader = KnowledgeBaseLoader(config["data_path"])
+    data_path = PROJECT_ROOT / config["data_path"]
+    loader = KnowledgeBaseLoader(data_path)
 
     grounding_env = loader.load_domain(config["domain_file"], config["embedding_dim"])
     logger.logger.info(f"Domínio com {len(grounding_env)} constantes carregado.")
@@ -90,9 +95,6 @@ def main(config_path="config.yaml"):
 
     facts_with_truth_values = loader.load_facts(config["facts_file"])
     rules = loader.load_rules(config["rules_file"])
-    knowledge_base: List[Formula] = rules + [
-        fact for fact, _ in facts_with_truth_values
-    ]
     logger.logger.info(
         f"{len(facts_with_truth_values)} fatos e {len(rules)} regras carregados."
     )
@@ -130,6 +132,12 @@ def main(config_path="config.yaml"):
             logger.log_epoch(epoch, epochs, loss.data, avg_satisfaction)
 
     logger.log_final_results(grounding_env)
+
+    logger.print_section("3. Salvando Modelo")
+    model_save_path = PROJECT_ROOT / config["model_save_path"]
+    save_model(model_save_path, predicate_map, grounding_env)
+    logger.logger.info(f"Modelo salvo em: {model_save_path}")
+
     logger.logger.info("\n🎉 Treinamento concluído com sucesso!")
 
 
