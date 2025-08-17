@@ -11,7 +11,7 @@ try:
     from src.module import Module, Linear, Sigmoid
     from src.logic import Formula
     from src.interpreter import Interpreter
-    from src.data.loader import KnowledgeBaseLoader
+    from src.data_manager import KnowledgeBaseLoader
     from src.training.saver import load_model
 except ImportError:
     print("❌ Erro ao importar um ou mais módulos necessários para a inferência.")

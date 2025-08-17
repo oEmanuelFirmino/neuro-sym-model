@@ -14,7 +14,7 @@ try:
     from src.logic import Formula
     from src.interpreter import Interpreter, PredicateMap, GroundingEnv
     from src.training.optimizer import SGD
-    from src.data.loader import KnowledgeBaseLoader
+    from src.data_manager.loader import KnowledgeBaseLoader
     from src.training.saver import save_model
 except ImportError:
     print("❌ Erro ao importar um ou mais módulos necessários para o treinamento.")
