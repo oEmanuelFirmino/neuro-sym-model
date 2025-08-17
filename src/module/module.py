@@ -1,7 +1,7 @@
 import random
 import math
 from abc import ABC, abstractmethod
-from src.tensor.tensor import Tensor
+from ..tensor import Tensor
 
 
 class Module(ABC):
@@ -59,7 +59,7 @@ class Linear(Module):
 
 class Sigmoid(Module):
     def forward(self, x: Tensor) -> Tensor:
-        return (x * -1.0).exp().__add__(1.0) ** -1.0
+        return Tensor(1.0) / (Tensor(1.0) + (x * -1.0).exp())
 
 
 class ReLU(Module):

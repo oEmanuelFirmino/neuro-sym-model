@@ -63,19 +63,21 @@ class Tensor:
     def _apply_recursive(a, b, op):
         if isinstance(a, list):
             if isinstance(b, list):
-                if len(a) > 0 and (
-                    not isinstance(b, list) or len(b) == 0 or len(a) != len(b)
+                if (
+                    len(a) > 0
+                    and isinstance(a[0], list)
+                    and len(b) > 0
+                    and not isinstance(b[0], list)
                 ):
-                    return [Tensor._apply_recursive(x, b, op) for x in a]
+                    return [Tensor._apply_recursive(row, b, op) for row in a]
                 return [Tensor._apply_recursive(x, y, op) for x, y in zip(a, b)]
             else:
                 return [Tensor._apply_recursive(x, b, op) for x in a]
         else:
-            if b is not None:
-                if isinstance(b, list) and len(b) > 0 and not isinstance(b[0], list):
-                    return [op(a, y) for y in b]
-                return op(a, b)
-            return op(a)
+            if isinstance(b, list):
+                return [Tensor._apply_recursive(a, y, op) for y in b]
+            else:
+                return op(a, b) if b is not None else op(a)
 
     def _wrap_result(
         self,
@@ -97,20 +99,22 @@ class Tensor:
             if self.requires_grad:
                 grad_to_add = out.grad.data
                 if self.shape != out.shape:
-                    summed_grad = grad_to_add
-                    for _ in range(len(out.shape) - len(self.shape)):
-                        summed_grad = [sum(row) for row in summed_grad]
-                    grad_to_add = summed_grad
+                    if self.shape == ():
+                        grad_to_add = sum(Tensor._flatten(grad_to_add))
+                    else:
+                        for _ in range(len(out.shape) - len(self.shape)):
+                            grad_to_add = [sum(row) for row in grad_to_add]
                 self.grad.data = self._apply_recursive(
                     self.grad.data, grad_to_add, lambda a, b: a + b
                 )
             if other_tensor.requires_grad:
                 grad_to_add = out.grad.data
                 if other_tensor.shape != out.shape:
-                    summed_grad = grad_to_add
-                    for _ in range(len(out.shape) - len(other_tensor.shape)):
-                        summed_grad = [sum(row) for row in summed_grad]
-                    grad_to_add = summed_grad
+                    if other_tensor.shape == ():
+                        grad_to_add = sum(Tensor._flatten(grad_to_add))
+                    else:
+                        for _ in range(len(out.shape) - len(other_tensor.shape)):
+                            grad_to_add = [sum(row) for row in grad_to_add]
                 other_tensor.grad.data = self._apply_recursive(
                     other_tensor.grad.data, grad_to_add, lambda a, b: a + b
                 )
@@ -131,10 +135,11 @@ class Tensor:
                     other_tensor.data, out.grad.data, lambda a, b: a * b
                 )
                 if self.shape != out.shape:
-                    summed_grad = grad_data
-                    for _ in range(len(out.shape) - len(self.shape)):
-                        summed_grad = [sum(row) for row in summed_grad]
-                    grad_data = summed_grad
+                    if self.shape == ():
+                        grad_data = sum(Tensor._flatten(grad_data))
+                    else:
+                        for _ in range(len(out.shape) - len(self.shape)):
+                            grad_data = [sum(row) for row in grad_data]
                 self.grad.data = self._apply_recursive(
                     self.grad.data, grad_data, lambda a, b: a + b
                 )
@@ -143,16 +148,40 @@ class Tensor:
                     self.data, out.grad.data, lambda a, b: a * b
                 )
                 if other_tensor.shape != out.shape:
-                    summed_grad = grad_data
-                    for _ in range(len(out.shape) - len(other_tensor.shape)):
-                        summed_grad = [sum(row) for row in summed_grad]
-                    grad_data = summed_grad
+                    if other_tensor.shape == ():
+                        grad_data = sum(Tensor._flatten(grad_data))
+                    else:
+                        for _ in range(len(out.shape) - len(other_tensor.shape)):
+                            grad_data = [sum(row) for row in grad_data]
                 other_tensor.grad.data = self._apply_recursive(
                     other_tensor.grad.data, grad_data, lambda a, b: a + b
                 )
 
         out._backward = _backward
         return out
+
+    def __pow__(self, p: float):
+        if not _is_number(p):
+            raise TypeError(
+                "A potência só é suportada para expoentes numéricos (int/float)."
+            )
+        out_data = self._apply_recursive(self.data, None, lambda a: a**p)
+        out = self._wrap_result(out_data, f"pow({p})", (self,))
+
+        def _backward():
+            if self.requires_grad:
+                grad_data = self._apply_recursive(
+                    self.data, out.grad.data, lambda a, b: (p * (a ** (p - 1))) * b
+                )
+                self.grad.data = self._apply_recursive(
+                    self.grad.data, grad_data, lambda a, b: a + b
+                )
+
+        out._backward = _backward
+        return out
+
+    def __truediv__(self, other):
+        return self * (other**-1)
 
     def sum(self) -> "Tensor":
         total = sum(self._flatten(self.data))
@@ -249,7 +278,7 @@ class Tensor:
         return out
 
     def backward(self):
-        if not self.shape == ():
+        if self.shape != ():
             raise ValueError(
                 "O gradiente pode ser calculado apenas para tensores escalares."
             )
