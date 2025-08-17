@@ -1,5 +1,5 @@
 import math
-from typing import Any, Tuple, Union, Iterable, Optional
+from typing import Any, Tuple, Union, Iterable, Optional, Callable, List
 
 Number = Union[int, float]
 
@@ -18,7 +18,7 @@ class Tensor:
     ):
         if _is_number(data):
             self.data = float(data)
-            self.shape = ()
+            self.shape: Tuple[int, ...] = ()
         elif isinstance(data, list):
             self._validate(data)
             self.data = data
@@ -29,18 +29,19 @@ class Tensor:
             )
 
         self.requires_grad = bool(requires_grad)
-        self.grad: Optional[Union[list, float]] = None
+        self.grad: Optional[Tensor] = None
+        if self.requires_grad:
+            self.zero_grad()
+
         self._op: Optional[str] = _op
         self._parents: Tuple["Tensor", ...] = tuple(_parents) if _parents else tuple()
-        self._backward = lambda: None
+        self._backward: Callable[[], None] = lambda: None
 
     def _validate(self, data: Any):
-        if not isinstance(data, list):
-            return
-        if len(data) == 0:
+        if not isinstance(data, list) or not data:
             return
         first_shape = self._get_shape(data[0])
-        for elem in data:
+        for elem in data[1:]:
             if self._get_shape(elem) != first_shape:
                 raise ValueError(
                     "Tensor mal formado: sublistas com dimensões diferentes."
@@ -48,102 +49,114 @@ class Tensor:
 
     def _get_shape(self, data: Any) -> Tuple[int, ...]:
         if isinstance(data, list):
-            if len(data) == 0:
+            if not data:
                 return (0,)
             return (len(data),) + self._get_shape(data[0])
-        else:
-            return ()
+        return ()
 
     def __repr__(self):
         rg = ", requires_grad=True" if self.requires_grad else ""
-        return f"Tensor(shape={self.shape}{rg}, data={self.data})"
+        op = f", op={self._op}" if self._op else ""
+        return f"Tensor(shape={self.shape}{rg}{op}, data={self.data})"
 
     @staticmethod
-    def _zeros_like_data(data: Union[list, float]) -> Union[list, float]:
-        if isinstance(data, list):
-            return [Tensor._zeros_like_data(x) for x in data]
-        return 0.0
-
-    def zero_grad(self):
-        self.grad = self._zeros_like_data(self.data)
-
-    def detach(self) -> "Tensor":
-        return Tensor(self._clone_data(self.data), requires_grad=False)
-
-    @staticmethod
-    def _clone_data(data: Union[list, float]) -> Union[list, float]:
-        if isinstance(data, list):
-            return [Tensor._clone_data(x) for x in data]
-        return float(data)
-
-    @staticmethod
-    def _flatten(data):
-        if isinstance(data, list):
-            out = []
-            for x in data:
-                out.extend(Tensor._flatten(x))
-            return out
-        return [data]
-
-    def _apply_recursive(self, a, b, op):
+    def _apply_recursive(a, b, op):
         if isinstance(a, list):
             if isinstance(b, list):
-                return [self._apply_recursive(x, y, op) for x, y in zip(a, b)]
+                if len(a) != len(b) and len(b) != 0:
+                    return [Tensor._apply_recursive(x, b, op) for x in a]
+                return [Tensor._apply_recursive(x, y, op) for x, y in zip(a, b)]
             else:
-                return [self._apply_recursive(x, b, op) for x in a]
+                return [Tensor._apply_recursive(x, b, op) for x in a]
         else:
-            return op(a, b)
-
-    def _ensure_same_shape(self, other: "Tensor"):
-        if self.shape != other.shape:
-            raise ValueError("Shapes incompatíveis para operação elemento a elemento.")
+            if b is not None:
+                if isinstance(b, list) and len(b) > 0 and not isinstance(b[0], list):
+                    return [op(a, y) for y in b]
+                return op(a, b)
+            return op(a)
 
     def _wrap_result(
         self,
         data,
         op_name: str,
         parents: Iterable["Tensor"],
-        requires_grad: Optional[bool] = None,
-    ):
-        req = (
-            any(p.requires_grad for p in parents)
-            if requires_grad is None
-            else requires_grad
-        )
-        return Tensor(data, requires_grad=req, _op=op_name, _parents=parents)
-
-    def _elementwise_op(self, other, op_name, op_fn):
-        if isinstance(other, Tensor):
-            self._ensure_same_shape(other)
-            out_data = self._apply_recursive(self.data, other.data, op_fn)
-            return self._wrap_result(out_data, op_name, (self, other))
-        elif _is_number(other):
-            out_data = self._apply_recursive(self.data, float(other), op_fn)
-            return self._wrap_result(out_data, op_name, (self,))
-        else:
-            raise TypeError("Operação não suportada com tipo fornecido.")
+    ) -> "Tensor":
+        requires_grad = any(p.requires_grad for p in parents)
+        return Tensor(data, requires_grad=requires_grad, _op=op_name, _parents=parents)
 
     def __add__(self, other):
-        return self._elementwise_op(other, "add", lambda a, b: a + b)
+        other_tensor = other if isinstance(other, Tensor) else Tensor(other)
+        out_data = self._apply_recursive(
+            self.data, other_tensor.data, lambda a, b: a + b
+        )
+        out = self._wrap_result(out_data, "add", (self, other_tensor))
 
-    def __radd__(self, other):
-        return self.__add__(other)
+        def _backward():
+            if self.requires_grad:
+                grad_to_add = out.grad.data
+                if self.shape != out.shape:
+                    summed_grad = [sum(row) for row in grad_to_add]
+                    grad_to_add = summed_grad
+                self.grad.data = self._apply_recursive(
+                    self.grad.data, grad_to_add, lambda a, b: a + b
+                )
+            if other_tensor.requires_grad:
+                grad_to_add = out.grad.data
+                if other_tensor.shape != out.shape:
+                    summed_grad = [sum(row) for row in grad_to_add]
+                    grad_to_add = summed_grad
+                other_tensor.grad.data = self._apply_recursive(
+                    other_tensor.grad.data, grad_to_add, lambda a, b: a + b
+                )
 
-    def __sub__(self, other):
-        return self._elementwise_op(other, "sub", lambda a, b: a - b)
-
-    def __rsub__(self, other):
-        if _is_number(other):
-            return self._elementwise_op(other, "rsub", lambda a, b: b - a)
-        elif isinstance(other, Tensor):
-            return other.__sub__(self)
-        raise TypeError("Operação não suportada com tipo fornecido.")
+        out._backward = _backward
+        return out
 
     def __mul__(self, other):
-        return self._elementwise_op(other, "mul", lambda a, b: a * b)
+        other_tensor = other if isinstance(other, Tensor) else Tensor(other)
+        out_data = self._apply_recursive(
+            self.data, other_tensor.data, lambda a, b: a * b
+        )
+        out = self._wrap_result(out_data, "mul", (self, other_tensor))
 
-    def __rmul__(self, other):
-        return self.__mul__(other)
+        def _backward():
+            if self.requires_grad:
+                grad_data = self._apply_recursive(
+                    other_tensor.data, out.grad.data, lambda a, b: a * b
+                )
+                if self.shape != out.shape:
+                    summed_grad = [sum(row) for row in grad_data]
+                    grad_data = summed_grad
+                self.grad.data = self._apply_recursive(
+                    self.grad.data, grad_data, lambda a, b: a + b
+                )
+            if other_tensor.requires_grad:
+                grad_data = self._apply_recursive(
+                    self.data, out.grad.data, lambda a, b: a * b
+                )
+                if other_tensor.shape != out.shape:
+                    summed_grad = [sum(row) for row in grad_data]
+                    grad_data = summed_grad
+                other_tensor.grad.data = self._apply_recursive(
+                    other_tensor.grad.data, grad_data, lambda a, b: a + b
+                )
+
+        out._backward = _backward
+        return out
+
+    def sum(self) -> "Tensor":
+        total = sum(self._flatten(self.data))
+        out = self._wrap_result(total, "sum", (self,))
+
+        def _backward():
+            if self.requires_grad:
+                grad_dist = out.grad.data
+                self.grad.data = self._apply_recursive(
+                    self.grad.data, None, lambda a: a + grad_dist
+                )
+
+        out._backward = _backward
+        return out
 
     def dot(self, other: "Tensor") -> "Tensor":
         if len(self.shape) != 2 or len(other.shape) != 2:
@@ -151,35 +164,105 @@ class Tensor:
         if self.shape[1] != other.shape[0]:
             raise ValueError("Dimensões incompatíveis para multiplicação matricial.")
 
-        result = []
-        for i in range(self.shape[0]):
-            row = []
-            for j in range(other.shape[1]):
-                val = 0.0
-                for k in range(self.shape[1]):
-                    val += self.data[i][k] * other.data[k][j]
-                row.append(val)
-            result.append(row)
-        return self._wrap_result(result, "dot", (self, other))
+        result_data = [
+            [
+                sum(self.data[i][k] * other.data[k][j] for k in range(self.shape[1]))
+                for j in range(other.shape[1])
+            ]
+            for i in range(self.shape[0])
+        ]
 
-    def exp(self):
-        out = self._apply_recursive(self.data, None, lambda a, _: math.exp(a))
-        return self._wrap_result(out, "exp", (self,))
+        out = self._wrap_result(result_data, "dot", (self, other))
 
-    def log(self):
-        out = self._apply_recursive(self.data, None, lambda a, _: math.log(a))
-        return self._wrap_result(out, "log", (self,))
+        def _backward():
+            if self.requires_grad:
+                grad_a = Tensor(out.grad.data).dot(other.transpose()).data
+                self.grad.data = self._apply_recursive(
+                    self.grad.data, grad_a, lambda a, b: a + b
+                )
+            if other.requires_grad:
+                grad_b = self.transpose().dot(Tensor(out.grad.data)).data
+                other.grad.data = self._apply_recursive(
+                    other.grad.data, grad_b, lambda a, b: a + b
+                )
 
-    def pow(self, p: float):
-        out = self._apply_recursive(self.data, None, lambda a, _: a**p)
-        return self._wrap_result(out, f"pow({p})", (self,))
+        out._backward = _backward
+        return out
 
-    def sum(self):
-        return sum(self._flatten(self.data))
+    def transpose(self) -> "Tensor":
+        if len(self.shape) != 2:
+            raise ValueError("A transposição é suportada apenas para tensores 2D.")
+        rows, cols = self.shape
+        transposed_data = [[self.data[j][i] for j in range(rows)] for i in range(cols)]
+        out = self._wrap_result(transposed_data, "transpose", (self,))
 
-    def mean(self):
-        flat = self._flatten(self.data)
-        return sum(flat) / (len(flat) if flat else 1.0)
+        def _backward():
+            if self.requires_grad:
+                grad_transposed = Tensor(out.grad.data).transpose().data
+                self.grad.data = self._apply_recursive(
+                    self.grad.data, grad_transposed, lambda a, b: a + b
+                )
 
-    def backward(self, grad: Optional[Union[list, float]] = None):
-        raise NotImplementedError("Backward será implementado na Fase 2.2.")
+        out._backward = _backward
+        return out
+
+    def exp(self) -> "Tensor":
+        out_data = self._apply_recursive(self.data, None, lambda a: math.exp(a))
+        out = self._wrap_result(out_data, "exp", (self,))
+
+        def _backward():
+            if self.requires_grad:
+                grad_data = self._apply_recursive(
+                    out.data, out.grad.data, lambda a, b: a * b
+                )
+                self.grad.data = self._apply_recursive(
+                    self.grad.data, grad_data, lambda a, b: a + b
+                )
+
+        out._backward = _backward
+        return out
+
+    def backward(self):
+        if not self.shape == ():
+            raise ValueError(
+                "O gradiente pode ser calculado apenas para tensores escalares."
+            )
+
+        topo: List[Tensor] = []
+        visited = set()
+
+        def build_topo(v):
+            if v not in visited:
+                visited.add(v)
+                for parent in v._parents:
+                    build_topo(parent)
+                topo.append(v)
+
+        build_topo(self)
+
+        self.grad = Tensor(1.0)
+
+        for node in reversed(topo):
+            node._backward()
+
+    def zero_grad(self):
+        zero_data = self._apply_recursive(self.data, None, lambda _: 0.0)
+        self.grad = Tensor(zero_data)
+
+    @staticmethod
+    def _flatten(data: Union[list, Number]) -> list:
+        if isinstance(data, list):
+            return [item for sublist in data for item in Tensor._flatten(sublist)]
+        return [data]
+
+    def __radd__(self, other):
+        return self.__add__(other)
+
+    def __sub__(self, other):
+        return self + (other * -1.0)
+
+    def __rsub__(self, other):
+        return other + (self * -1.0)
+
+    def __rmul__(self, other):
+        return self.__mul__(other)
