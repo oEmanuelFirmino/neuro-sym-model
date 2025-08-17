@@ -18,7 +18,9 @@ classifiers = [
 ]
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "pyyaml>=6.0.2",
+]
 
 [project.scripts]
 test-tensor = "src.tensor.test_tensor:main"

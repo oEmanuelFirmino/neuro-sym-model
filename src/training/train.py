@@ -1,4 +1,5 @@
 import sys
+import yaml
 import logging
 from pathlib import Path
 from typing import List, Dict
@@ -8,15 +9,17 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 try:
     from src.tensor import Tensor
     from src.module import Module, Linear, Sigmoid
-    from src.logic import Formula, Atom, Forall, Variable, Constant, Implies
+    from src.logic import Formula
     from src.interpreter import Interpreter, PredicateMap, GroundingEnv
     from src.training.optimizer import SGD
+    from src.data.loader import KnowledgeBaseLoader
 except ImportError:
     print("❌ Erro ao importar um ou mais módulos necessários para o treinamento.")
     sys.exit(1)
 
 
 class TrainingLogger:
+
     def __init__(self, log_level=logging.INFO):
         self.logger = self._setup_logger(log_level)
 
@@ -55,30 +58,18 @@ class TrainingLogger:
             self.logger.info(f"  🔹 {name}: [{data_str}]")
 
 
-def setup_knowledge_base() -> List[Formula]:
-    x = Variable("x")
-
-    axiom1 = Forall(x, Implies(Atom("Grego", [x]), Atom("Homem", [x])))
-    axiom2 = Forall(x, Implies(Atom("Homem", [x]), Atom("Mortal", [x])))
-
-    socrates = Constant("socrates")
-    fact1 = Atom("Grego", [socrates])
-
-    return [axiom1, axiom2, fact1]
-
-
-def main():
+def main(config_path="config.yaml"):
     logger = TrainingLogger()
-    logger.print_banner("Loop de Treinamento Neuro-Simbólico")
+    logger.print_banner("Loop de Treinamento Neuro-Simbólico a partir de Arquivos")
 
-    logger.print_section("1. Inicializando Ambiente e Modelos")
+    with open(config_path, "r") as f:
+        config = yaml.safe_load(f)
 
-    embedding_dim = 2
-    grounding_env: GroundingEnv = {
-        "socrates": Tensor([[0.1, 0.9]], requires_grad=True),
-        "platao": Tensor([[0.2, 0.8]], requires_grad=True),
-        "aristoteles": Tensor([[0.3, 0.7]], requires_grad=True),
-    }
+    logger.print_section("1. Carregando Base de Conhecimento")
+    loader = KnowledgeBaseLoader(config["data_path"])
+
+    grounding_env = loader.load_domain(config["domain_file"], config["embedding_dim"])
+    logger.logger.info(f"Domínio com {len(grounding_env)} constantes carregado.")
 
     class PredicateNet(Module):
         def __init__(self, in_features):
@@ -89,46 +80,54 @@ def main():
         def forward(self, x):
             return self.activation(self.layer(x))
 
-    predicate_map: PredicateMap = {
-        "Mortal": PredicateNet(embedding_dim),
-        "Homem": PredicateNet(embedding_dim),
-        "Grego": PredicateNet(embedding_dim),
-    }
+    predicate_map: PredicateMap = {}
+    for pred_config in config["predicates"]:
+        arity = pred_config["arity"]
+        predicate_map[pred_config["name"]] = PredicateNet(
+            config["embedding_dim"] * arity
+        )
+    logger.logger.info(f"{len(predicate_map)} predicados neurais criados.")
 
-    all_parameters = []
-    for tensor in grounding_env.values():
-        all_parameters.append(tensor)
+    facts_with_truth_values = loader.load_facts(config["facts_file"])
+    rules = loader.load_rules(config["rules_file"])
+    knowledge_base: List[Formula] = rules + [
+        fact for fact, _ in facts_with_truth_values
+    ]
+    logger.logger.info(
+        f"{len(facts_with_truth_values)} fatos e {len(rules)} regras carregados."
+    )
+
+    all_parameters = list(grounding_env.values())
     for model in predicate_map.values():
         all_parameters.extend(model.parameters())
 
-    logger.logger.info(f"Total de tensores para otimizar: {len(all_parameters)}")
-
-    knowledge_base = setup_knowledge_base()
     interpreter = Interpreter(predicate_map, grounding_env)
-    optimizer = SGD(all_parameters, lr=0.1)
+    optimizer = SGD(all_parameters, lr=config["learning_rate"])
+    logger.logger.info(f"Otimizador SGD configurado com lr={config['learning_rate']}.")
 
-    epochs = 100
+    epochs = config["epochs"]
     logger.print_section("2. Iniciando Treinamento")
     for epoch in range(epochs):
         optimizer.zero_grad()
 
-        truth_values = []
-        for formula in knowledge_base:
-            truth_values.append(interpreter.eval_formula(formula, {}))
+        rule_truth_values = [interpreter.eval_formula(formula, {}) for formula in rules]
 
-        total_satisfaction = truth_values[0]
-        for i in range(1, len(truth_values)):
-            total_satisfaction += truth_values[i]
-        total_satisfaction /= Tensor(len(truth_values))
+        fact_losses = []
+        for fact_formula, truth_value in facts_with_truth_values:
+            predicted_truth = interpreter.eval_formula(fact_formula, {}).sum()
+            fact_losses.append((predicted_truth - Tensor(truth_value)) ** 2)
 
-        loss = (Tensor(1.0) - total_satisfaction).sum()
+        total_satisfaction = sum(rule_truth_values, Tensor(0.0))
+        total_fact_loss = sum(fact_losses, Tensor(0.0))
+
+        loss = (Tensor(len(rules)) - total_satisfaction) + total_fact_loss
 
         loss.backward()
         optimizer.step()
 
         if (epoch + 1) % 10 == 0:
-            satisfaction_value = total_satisfaction._flatten(total_satisfaction.data)[0]
-            logger.log_epoch(epoch, epochs, loss.data, satisfaction_value)
+            avg_satisfaction = (total_satisfaction.data / len(rules)) if rules else 0.0
+            logger.log_epoch(epoch, epochs, loss.data, avg_satisfaction)
 
     logger.log_final_results(grounding_env)
     logger.logger.info("\n🎉 Treinamento concluído com sucesso!")

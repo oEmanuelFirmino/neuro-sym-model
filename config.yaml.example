@@ -1,0 +1,22 @@
+# Parâmetros do Modelo
+embedding_dim: 2
+predicates:
+  - name: Grego
+    arity: 1
+  - name: Homem
+    arity: 1
+  - name: Mortal
+    arity: 1
+
+# Hiperparâmetros de Treinamento
+learning_rate: 0.1
+epochs: 100
+
+# Caminhos dos Dados
+data_path: "data/socrates"
+domain_file: "domain.csv"
+facts_file: "facts.csv"
+rules_file: "rules.txt"
+
+# Caminho para salvar o modelo treinado
+model_save_path: "trained_models/socrates_model.json"
