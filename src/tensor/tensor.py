@@ -197,6 +197,39 @@ class Tensor:
         out._backward = _backward
         return out
 
+    def min(self) -> "Tensor":
+        min_val = min(self._flatten(self.data))
+        out = self._wrap_result(min_val, "min", (self,))
+
+        def _backward():
+            if self.requires_grad:
+                min_indices = [
+                    i for i, x in enumerate(self._flatten(self.data)) if x == min_val
+                ]
+                grad_data = self._apply_recursive(self.grad.data, None, lambda _: 0.0)
+                flat_grad = self._flatten(grad_data)
+
+                for i in min_indices:
+                    flat_grad[i] += out.grad.data / len(min_indices)
+
+                def unflatten(flat_list, original_shape):
+                    if not original_shape:
+                        return flat_list[0]
+
+                    sub_size = len(flat_list) // original_shape[0]
+                    return [
+                        unflatten(
+                            flat_list[i * sub_size : (i + 1) * sub_size],
+                            original_shape[1:],
+                        )
+                        for i in range(original_shape[0])
+                    ]
+
+                self.grad.data = unflatten(flat_grad, self.shape)
+
+        out._backward = _backward
+        return out
+
     def dot(self, other: "Tensor") -> "Tensor":
         if len(self.shape) != 2 or len(other.shape) != 2:
             raise ValueError("Multiplicação matricial exige tensores 2D.")
@@ -310,6 +343,40 @@ class Tensor:
             return [item for sublist in data for item in Tensor._flatten(sublist)]
         return [data]
 
+    @staticmethod
+    def concatenate(tensors: List["Tensor"], axis: int = 0) -> "Tensor":
+        if not tensors:
+            raise ValueError(
+                "A lista de tensores para concatenar não pode estar vazia."
+            )
+
+        if axis == 0:
+            combined_data = []
+            for t in tensors:
+                data = t.data if isinstance(t.data, list) else [t.data]
+                if t.shape == ():
+                    combined_data.append(data)
+                else:
+                    combined_data.extend(data)
+
+            return Tensor(
+                combined_data, requires_grad=any(t.requires_grad for t in tensors)
+            )
+
+        elif axis == 1:
+            combined_data = [[] for _ in range(tensors[0].shape[0])]
+            for t in tensors:
+                for i, row in enumerate(t.data):
+                    combined_data[i].extend(row)
+
+            return Tensor(
+                combined_data, requires_grad=any(t.requires_grad for t in tensors)
+            )
+        else:
+            raise NotImplementedError(
+                "A concatenação só é suportada para axis=0 ou axis=1."
+            )
+
     def __radd__(self, other):
         return self.__add__(other)
 
@@ -321,3 +388,6 @@ class Tensor:
 
     def __rmul__(self, other):
         return self.__mul__(other)
+
+    def __rtruediv__(self, other):
+        return other * (self**-1)
