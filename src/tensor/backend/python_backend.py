@@ -10,6 +10,7 @@ def _flatten(data: Any) -> list:
 
 
 class PythonBackend(TensorBackend):
+
     def apply_recursive(self, a: Any, b: Any, op: Callable) -> Any:
         if isinstance(a, list):
             if b is not None and isinstance(b, list):
@@ -23,7 +24,7 @@ class PythonBackend(TensorBackend):
                 return [self.apply_recursive(x, y, op) for x, y in zip(a, b)]
             else:
                 return [self.apply_recursive(x, b, op) for x in a]
-        else:  # a é escalar
+        else:
             if b is not None and isinstance(b, list):
                 return [self.apply_recursive(a, y, op) for y in b]
             else:
@@ -35,9 +36,15 @@ class PythonBackend(TensorBackend):
     def relu(self, data: Any) -> Any:
         return self.apply_recursive(data, None, lambda a: max(0, a))
 
+    def relu_backward(self, grad_data: Any, input_data: Any) -> Any:
+
+        return self.apply_recursive(
+            input_data, grad_data, lambda a, b: b if a > 0 else 0
+        )
+
     def dot(self, a: Any, b: Any) -> Any:
         a_rows, a_cols = len(a), len(a[0])
-        b_rows, b_cols = len(b), len(b[0])
+        b_cols = len(b[0])
         return [
             [sum(a[i][k] * b[k][j] for k in range(a_cols)) for j in range(b_cols)]
             for i in range(a_rows)

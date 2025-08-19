@@ -14,27 +14,23 @@ class Tensor:
         _parents: Optional[Iterable["Tensor"]] = None,
     ):
         self.backend = get_backend()
-
         if isinstance(data, (int, float)):
-            self.data = float(data)
-            self.shape: Tuple[int, ...] = ()
+            self.data, self.shape = float(data), ()
         elif isinstance(data, list):
-            self._validate(data)
-            self.data = data
-            self.shape = self._get_shape(data)
+            self.data, self.shape = data, self._get_shape(data)
         else:
             raise TypeError(
                 "Tensor aceita apenas listas aninhadas ou números (int/float)."
             )
-
         self.requires_grad = bool(requires_grad)
         self.grad: Optional[Tensor] = None
         if self.requires_grad:
             self.zero_grad()
-
-        self._op = _op
-        self._parents = tuple(_parents) if _parents else tuple()
-        self._backward: Callable[[], None] = lambda: None
+        self._op, self._parents, self._backward = (
+            _op,
+            tuple(_parents) if _parents else tuple(),
+            lambda: None,
+        )
 
     def _validate(self, data: Any):
         if not isinstance(data, list) or not data:
@@ -47,61 +43,62 @@ class Tensor:
                 )
 
     def _get_shape(self, data: Any) -> Tuple[int, ...]:
-        if isinstance(data, list):
-            return (len(data),) + self._get_shape(data[0]) if data else (0,)
-        return ()
+        return (
+            (len(data),) + self._get_shape(data[0])
+            if isinstance(data, list) and data
+            else ()
+        )
 
     def __repr__(self):
-        return f"Tensor(shape={self.shape}, requires_grad={self.requires_grad}, op={self._op}, data={self.data})"
+        return f"Tensor(shape={self.shape}, requires_grad={self.requires_grad}, op={self._op})"
 
     def _wrap_result(self, data, op_name, parents):
         requires_grad = any(p.requires_grad for p in parents)
         return Tensor(data, requires_grad=requires_grad, _op=op_name, _parents=parents)
 
     def __add__(self, other):
-        other_tensor = other if isinstance(other, Tensor) else Tensor(other)
+        other = other if isinstance(other, Tensor) else Tensor(other)
         out_data = self.backend.apply_recursive(
-            self.data, other_tensor.data, lambda a, b: a + b
+            self.data, other.data, lambda a, b: a + b
         )
-        out = self._wrap_result(out_data, "add", (self, other_tensor))
+        out = self._wrap_result(out_data, "add", (self, other))
 
         def _backward():
-
             if self.requires_grad:
-                grad_data = self.backend.apply_recursive(
+                self.grad.data = self.backend.apply_recursive(
                     self.grad.data, out.grad.data, lambda a, b: a + b
                 )
-                self.grad = Tensor(grad_data)
-            if other_tensor.requires_grad:
-                grad_data = self.backend.apply_recursive(
-                    other_tensor.grad.data, out.grad.data, lambda a, b: a + b
+            if other.requires_grad:
+                other.grad.data = self.backend.apply_recursive(
+                    other.grad.data, out.grad.data, lambda a, b: a + b
                 )
-                other_tensor.grad = Tensor(grad_data)
 
         out._backward = _backward
         return out
 
     def __mul__(self, other):
-        other_tensor = other if isinstance(other, Tensor) else Tensor(other)
+        other = other if isinstance(other, Tensor) else Tensor(other)
         out_data = self.backend.apply_recursive(
-            self.data, other_tensor.data, lambda a, b: a * b
+            self.data, other.data, lambda a, b: a * b
         )
-        out = self._wrap_result(out_data, "mul", (self, other_tensor))
+        out = self._wrap_result(out_data, "mul", (self, other))
 
         def _backward():
             if self.requires_grad:
-                grad_data = self.backend.apply_recursive(
-                    other_tensor.data, out.grad.data, lambda a, b: a * b
-                )
                 self.grad.data = self.backend.apply_recursive(
-                    self.grad.data, grad_data, lambda a, b: a + b
+                    self.grad.data,
+                    self.backend.apply_recursive(
+                        other.data, out.grad.data, lambda a, b: a * b
+                    ),
+                    lambda a, b: a + b,
                 )
-            if other_tensor.requires_grad:
-                grad_data = self.backend.apply_recursive(
-                    self.data, out.grad.data, lambda a, b: a * b
-                )
-                other_tensor.grad.data = self.backend.apply_recursive(
-                    other_tensor.grad.data, grad_data, lambda a, b: a + b
+            if other.requires_grad:
+                other.grad.data = self.backend.apply_recursive(
+                    other.grad.data,
+                    self.backend.apply_recursive(
+                        self.data, out.grad.data, lambda a, b: a * b
+                    ),
+                    lambda a, b: a + b,
                 )
 
         out._backward = _backward
@@ -157,11 +154,11 @@ class Tensor:
         def _backward():
             if self.requires_grad:
                 n = len(self._flatten(self.data))
-                pre_factor = (out.data ** (1 - p)) / n
+                pre_factor = (out.data ** (1 - p)) / n if out.data > 1e-9 else 0.0
                 grad_data = self.backend.apply_recursive(
                     self.data,
                     out.grad.data,
-                    lambda a, b: (a ** (p - 1)) * pre_factor * b,
+                    lambda a, b: ((a + 1e-9) ** (p - 1)) * pre_factor * b,
                 )
                 self.grad.data = self.backend.apply_recursive(
                     self.grad.data, grad_data, lambda a, b: a + b
@@ -176,10 +173,11 @@ class Tensor:
 
         def _backward():
             if self.requires_grad:
-                flat_data = self._flatten(self.data)
+                flat_data, flat_grad = self._flatten(self.data), self._flatten(
+                    self.grad.data
+                )
                 min_indices = [i for i, x in enumerate(flat_data) if x == out_data]
                 grad_per_min = out.grad.data / len(min_indices)
-                flat_grad = self._flatten(self.grad.data)
                 for i in min_indices:
                     flat_grad[i] += grad_per_min
                 self.grad.data = self._unflatten(flat_grad, self.shape)
@@ -193,14 +191,16 @@ class Tensor:
 
         def _backward():
             if self.requires_grad:
-                grad_a = Tensor(out.grad.data).dot(other.transpose()).data
                 self.grad.data = self.backend.apply_recursive(
-                    self.grad.data, grad_a, lambda a, b: a + b
+                    self.grad.data,
+                    Tensor(out.grad.data).dot(other.transpose()).data,
+                    lambda a, b: a + b,
                 )
             if other.requires_grad:
-                grad_b = self.transpose().dot(Tensor(out.grad.data)).data
                 other.grad.data = self.backend.apply_recursive(
-                    other.grad.data, grad_b, lambda a, b: a + b
+                    other.grad.data,
+                    self.transpose().dot(Tensor(out.grad.data)).data,
+                    lambda a, b: a + b,
                 )
 
         out._backward = _backward
@@ -227,11 +227,12 @@ class Tensor:
 
         def _backward():
             if self.requires_grad:
-                grad_data = self.backend.apply_recursive(
-                    out.data, out.grad.data, lambda a, b: a * b
-                )
                 self.grad.data = self.backend.apply_recursive(
-                    self.grad.data, grad_data, lambda a, b: a + b
+                    self.grad.data,
+                    self.backend.apply_recursive(
+                        out.data, out.grad.data, lambda a, b: a * b
+                    ),
+                    lambda a, b: a + b,
                 )
 
         out._backward = _backward
@@ -243,9 +244,8 @@ class Tensor:
 
         def _backward():
             if self.requires_grad:
-                grad_data = self.backend.apply_recursive(
-                    self.data, out.grad.data, lambda a, b: b if a > 0 else 0
-                )
+
+                grad_data = self.backend.relu_backward(out.grad.data, self.data)
                 self.grad.data = self.backend.apply_recursive(
                     self.grad.data, grad_data, lambda a, b: a + b
                 )
@@ -264,8 +264,7 @@ class Tensor:
         def build_topo(v):
             if v not in visited:
                 visited.add(v)
-                for parent in v._parents:
-                    build_topo(parent)
+                [build_topo(p) for p in v._parents]
                 topo.append(v)
 
         build_topo(self)
@@ -280,21 +279,19 @@ class Tensor:
     @staticmethod
     def _flatten(data: Union[list, Number]) -> list:
         return (
-            [item for sublist in data for item in Tensor._flatten(sublist)]
+            [i for s in data for i in Tensor._flatten(s)]
             if isinstance(data, list)
             else [data]
         )
 
     @staticmethod
-    def _unflatten(flat_list: list, original_shape: tuple) -> Union[list, float]:
-        if not original_shape:
-            return flat_list[0]
-        sub_size = len(flat_list) // original_shape[0]
+    def _unflatten(flat: list, shape: tuple) -> Union[list, float]:
+        if not shape:
+            return flat[0]
+        size = len(flat) // shape[0]
         return [
-            Tensor._unflatten(
-                flat_list[i * sub_size : (i + 1) * sub_size], original_shape[1:]
-            )
-            for i in range(original_shape[0])
+            Tensor._unflatten(flat[i * size : (i + 1) * size], shape[1:])
+            for i in range(shape[0])
         ]
 
     @staticmethod
@@ -304,25 +301,22 @@ class Tensor:
                 "A lista de tensores para concatenar não pode estar vazia."
             )
         if axis == 0:
-            combined_data = []
-            for t in tensors:
-                combined_data.extend(t.data if isinstance(t.data, list) else [t.data])
-            return Tensor(
-                combined_data, requires_grad=any(t.requires_grad for t in tensors)
-            )
+            data = [
+                d
+                for t in tensors
+                for d in (t.data if isinstance(t.data, list) else [t.data])
+            ]
+            return Tensor(data, requires_grad=any(t.requires_grad for t in tensors))
         elif axis == 1:
-            num_rows = tensors[0].shape[0]
-            combined_data = [[] for _ in range(num_rows)]
+            rows = tensors[0].shape[0]
+            data = [[] for _ in range(rows)]
             for t in tensors:
-                for i, row in enumerate(t.data):
-                    combined_data[i].extend(row if isinstance(row, list) else [row])
-            return Tensor(
-                combined_data, requires_grad=any(t.requires_grad for t in tensors)
-            )
-        else:
-            raise NotImplementedError(
-                "A concatenação só é suportada para axis=0 ou axis=1."
-            )
+                for i, r in enumerate(t.data):
+                    data[i].extend(r if isinstance(r, list) else [r])
+            return Tensor(data, requires_grad=any(t.requires_grad for t in tensors))
+        raise NotImplementedError(
+            "A concatenação só é suportada para axis=0 ou axis=1."
+        )
 
     def __truediv__(self, other):
         return self * (other**-1)

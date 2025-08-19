@@ -4,16 +4,24 @@ current_backend = PythonBackend()
 
 
 def set_backend(name: str):
+
     global current_backend
     if name == "python":
+        print("INFO: Usando backend 'python'.")
         current_backend = PythonBackend()
-    # backend NumPy will be added in the future
-    # elif name == 'torch':
-    #     from .numpy_backend import NumpyBackend
-    #     current_backend = NumpyBackend()
+    elif name == "numpy":
+        try:
+            from .numpy_backend import NumpyBackend
+
+            print("INFO: Usando backend 'numpy'.")
+            current_backend = NumpyBackend()
+        except ImportError:
+            raise ImportError(
+                "O backend 'numpy' não está disponível. Por favor, instale a biblioteca com 'pip install numpy'."
+            )
     else:
         raise ValueError(
-            f"Backend desconhecido: '{name}'. Opções disponíveis: ['python']"
+            f"Backend desconhecido: '{name}'. Opções disponíveis: ['python', 'numpy']"
         )
 
 

@@ -1,8 +1,11 @@
+# src/tensor/backend/base.py
+
 from abc import ABC, abstractmethod
 from typing import Any, Callable
 
 
 class TensorBackend(ABC):
+
     @abstractmethod
     def apply_recursive(self, a: Any, b: Any, op: Callable) -> Any:
         pass
@@ -13,6 +16,11 @@ class TensorBackend(ABC):
 
     @abstractmethod
     def relu(self, data: Any) -> Any:
+        pass
+
+    @abstractmethod
+    def relu_backward(self, grad_data: Any, input_data: Any) -> Any:
+
         pass
 
     @abstractmethod
