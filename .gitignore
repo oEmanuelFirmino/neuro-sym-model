@@ -6,7 +6,6 @@ __pycache__/
 # C extensions
 *.so
 
-data/
 trained_models/
 config.yaml
 

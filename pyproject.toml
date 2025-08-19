@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "neuro-sym-model"
+name = "neuro_symbolic_core"
 version = "0.1.0"
 description = "Neuro-Symbolic Model"
 authors = [

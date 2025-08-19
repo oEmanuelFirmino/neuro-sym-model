@@ -1,0 +1,2 @@
+forall x: (Grego(x) -> Homem(x))
+forall x: (Homem(x) -> Mortal(x))
