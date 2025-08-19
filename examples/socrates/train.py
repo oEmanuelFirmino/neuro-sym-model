@@ -11,10 +11,12 @@ try:
     from src.interpreter import Interpreter
     from src.training.optimizer import SGD
     from src.data_manager.loader import KnowledgeBaseLoader
+
     from src.training.saver import save_model
     from src.training.trainer import Trainer
-
     from src.module.factory import create_model_from_config
+
+    from src.training.callbacks import ModelCheckpoint
 except ImportError as e:
     print(f"❌ Erro ao importar a biblioteca neuro-simbólica: {e}")
     sys.exit(1)
@@ -35,7 +37,7 @@ def main():
         "--config",
         type=str,
         default="examples/socrates/config.yaml",
-        help="Caminho para o arquivo de configuração YAML.",
+        help="Caminho para o arquivo YAML.",
     )
     args = parser.parse_args()
 
@@ -54,52 +56,67 @@ def main():
     facts_with_truth_values = loader.load_facts(config["facts_file"])
     rules = loader.load_rules(config["rules_file"])
     test_facts = loader.load_facts(config["test_facts_file"])
-
     logger.info(
         f"Base de conhecimento carregada: {len(grounding_env)} constantes, {len(facts_with_truth_values)} fatos, {len(rules)} regras."
     )
 
-    predicate_map = {}
-    for pred_config in config["predicates"]:
-        name = pred_config["name"]
-        arity = pred_config["arity"]
-        architecture = pred_config["architecture"]
-
-        in_features = config["embedding_dim"] * arity
-
-        predicate_map[name] = create_model_from_config(in_features, architecture)
-
+    predicate_map = {
+        p["name"]: create_model_from_config(
+            config["embedding_dim"] * p["arity"], p["architecture"]
+        )
+        for p in config["predicates"]
+    }
     logger.info(
-        f"{len(predicate_map)} modelos de predicado foram construídos dinamicamente pela fábrica."
+        f"{len(predicate_map)} modelos de predicado foram construídos dinamicamente."
     )
 
     all_parameters = list(grounding_env.values())
     for model in predicate_map.values():
         all_parameters.extend(model.parameters())
     optimizer = SGD(all_parameters, lr=config["learning_rate"])
-    logger.info(
-        f"Otimizador SGD configurado com learning rate: {config['learning_rate']}."
-    )
 
-    operator_config = config.get("fuzzy_logic")
-    quantifier_config = config.get("quantifiers")
     interpreter = Interpreter(
         predicate_map=predicate_map,
         grounding_env=grounding_env,
-        operator_config=operator_config,
-        quantifier_config=quantifier_config,
+        operator_config=config.get("fuzzy_logic"),
+        quantifier_config=config.get("quantifiers"),
+    )
+
+    model_save_path = PROJECT_ROOT / config["model_save_path"]
+    checkpoint_callback = ModelCheckpoint(
+        filepath=str(model_save_path),
+        monitor="loss",
+        mode="min",
+        save_best_only=True,
     )
     logger.info(
-        f"Interpretador instanciado com agregador Forall: {quantifier_config.get('forall') if quantifier_config else 'padrão'}."
+        f"Callback ModelCheckpoint configurado para salvar o melhor modelo em '{model_save_path}'."
     )
 
     trainer = Trainer(
-        interpreter=interpreter, optimizer=optimizer, epochs=config["epochs"]
+        interpreter=interpreter,
+        optimizer=optimizer,
+        epochs=config["epochs"],
+        callbacks=[checkpoint_callback],
     )
 
     trainer.fit(rules=rules, facts=facts_with_truth_values)
 
-    logger.info("\n" + "--- Avaliando o Modelo no Conjunto de Teste ---")
+    logger.info(
+        "\n"
+        + "--- Avaliando o Modelo no Conjunto de Teste (com o melhor modelo salvo) ---"
+    )
+
+    try:
+        from src.training.saver import load_model
+
+        load_model(str(model_save_path), predicate_map, grounding_env)
+        logger.info("Melhor modelo carregado de volta para avaliação final.")
+    except FileNotFoundError:
+        logger.warning(
+            "Nenhum modelo salvo pelo checkpoint encontrado. Avaliando com o estado final do modelo."
+        )
+
     for fact_formula, _ in test_facts:
         predicted_truth_tensor = interpreter.eval_formula(fact_formula, {})
         predicted_truth = predicted_truth_tensor._flatten(predicted_truth_tensor.data)[
@@ -108,10 +125,6 @@ def main():
         logger.info(
             f"Consulta: {fact_formula}, Grau de Verdade Previsto: {predicted_truth:.4f}"
         )
-
-    model_save_path = PROJECT_ROOT / config["model_save_path"]
-    save_model(model_save_path, predicate_map, grounding_env)
-    logger.info(f"Modelo salvo em: {model_save_path}")
 
 
 if __name__ == "__main__":
