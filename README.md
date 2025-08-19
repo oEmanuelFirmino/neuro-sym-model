@@ -107,4 +107,4 @@ uv run src/inference/infer.py --query "Mortal(socrates)"
 ```
 
 The script will load the saved model and the environment defined in `config.yaml` to evaluate your query and print the resulting truth value.
-"""
+
