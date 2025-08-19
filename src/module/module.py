@@ -1,7 +1,7 @@
 import random
 import math
 from abc import ABC, abstractmethod
-from typing import Dict
+from typing import Dict, List
 from ..tensor import Tensor
 
 
@@ -56,12 +56,13 @@ class Module(ABC):
 class Linear(Module):
     def __init__(self, in_features: int, out_features: int):
         super().__init__()
-        limit = 1 / math.sqrt(in_features)
+
+        limit = math.sqrt(2.0 / in_features)
         weights_data = [
-            [random.uniform(-limit, limit) for _ in range(out_features)]
+            [random.normalvariate(0, limit) for _ in range(out_features)]
             for _ in range(in_features)
         ]
-        bias_data = [[random.uniform(-limit, limit) for _ in range(out_features)]]
+        bias_data = [[0.0 for _ in range(out_features)]]
         self.weights = Tensor(weights_data, requires_grad=True)
         self.bias = Tensor(bias_data, requires_grad=True)
         self.add_parameter("weights", self.weights)
@@ -79,3 +80,15 @@ class Sigmoid(Module):
 class ReLU(Module):
     def forward(self, x: Tensor) -> Tensor:
         return x.relu()
+
+
+class Sequential(Module):
+    def __init__(self, *layers: Module):
+        super().__init__()
+        for i, layer in enumerate(layers):
+            self.add_module(str(i), layer)
+
+    def forward(self, x: Tensor) -> Tensor:
+        for module in self._modules.values():
+            x = module(x)
+        return x

@@ -8,13 +8,13 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 try:
-    from src.tensor import Tensor
-    from src.module import Module, Linear, Sigmoid
     from src.interpreter import Interpreter
     from src.training.optimizer import SGD
     from src.data_manager.loader import KnowledgeBaseLoader
     from src.training.saver import save_model
     from src.training.trainer import Trainer
+
+    from src.module.factory import create_model_from_config
 except ImportError as e:
     print(f"❌ Erro ao importar a biblioteca neuro-simbólica: {e}")
     sys.exit(1)
@@ -59,22 +59,19 @@ def main():
         f"Base de conhecimento carregada: {len(grounding_env)} constantes, {len(facts_with_truth_values)} fatos, {len(rules)} regras."
     )
 
-    class PredicateNet(Module):
-        def __init__(self, in_features):
-            super().__init__()
-            self.add_module("layer", Linear(in_features, 1))
-            self.add_module("activation", Sigmoid())
+    predicate_map = {}
+    for pred_config in config["predicates"]:
+        name = pred_config["name"]
+        arity = pred_config["arity"]
+        architecture = pred_config["architecture"]
 
-        def forward(self, x):
-            return self.activation(self.layer(x))
+        in_features = config["embedding_dim"] * arity
 
-    predicate_map = {
-        pred_config["name"]: PredicateNet(
-            config["embedding_dim"] * pred_config["arity"]
-        )
-        for pred_config in config["predicates"]
-    }
-    logger.info(f"{len(predicate_map)} modelos de predicado foram instanciados.")
+        predicate_map[name] = create_model_from_config(in_features, architecture)
+
+    logger.info(
+        f"{len(predicate_map)} modelos de predicado foram construídos dinamicamente pela fábrica."
+    )
 
     all_parameters = list(grounding_env.values())
     for model in predicate_map.values():
@@ -86,7 +83,6 @@ def main():
 
     operator_config = config.get("fuzzy_logic")
     quantifier_config = config.get("quantifiers")
-
     interpreter = Interpreter(
         predicate_map=predicate_map,
         grounding_env=grounding_env,
