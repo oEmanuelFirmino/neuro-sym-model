@@ -6,6 +6,10 @@ import logging
 import argparse
 from pathlib import Path
 
+from src.tensor.backend import set_backend
+
+set_backend("numpy")
+
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 

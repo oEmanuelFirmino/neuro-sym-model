@@ -17,9 +17,12 @@ class NumpyBackend(TensorBackend):
         if b is not None:
             result = op(a_np, self._to_numpy(b))
         else:
-            if op(None) == 0.0:
-                result = np.zeros_like(a_np)
-            else:
+            try:
+                if op(None) == 0.0:
+                    result = np.zeros_like(a_np)
+                else:
+                    result = np.vectorize(op)(a_np)
+            except TypeError:
                 result = np.vectorize(op)(a_np)
         return self._to_list(result)
 
