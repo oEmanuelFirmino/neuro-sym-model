@@ -1,0 +1,44 @@
+# --- Características das Entidades ---
+ClienteNovo,C1003,1.0
+ClienteNovo,C2002,1.0
+ClienteConfiavel,C1001,1.0
+ClienteConfiavel,C1002,1.0
+IPdeAltoRisco,IP_RU_RISCO,1.0
+IPdeAltoRisco,IP_CN_RISCO,1.0
+
+# --- Relações entre Entidades ---
+# Transação -> Cliente
+RealizadaPor,T01,C1001,1.0
+RealizadaPor,T02,C1002,1.0
+RealizadaPor,T03,C1003,1.0 # Cliente novo
+RealizadaPor,T04,C2001,1.0
+RealizadaPor,T05,C2002,1.0 # Cliente novo
+RealizadaPor,T06,C1001,1.0 # Cliente confiável
+RealizadaPor,T07,C1002,1.0 # Cliente confiável
+
+# Transação -> Localização e IP
+LocalizadaEm,T01,BR,1.0
+LocalizadaEm,T02,US,1.0
+LocalizadaEm,T03,BR,1.0
+LocalizadaEm,T04,CN,1.0
+LocalizadaEm,T05,RU,1.0
+LocalizadaEm,T06,RU,1.0 # Cliente confiável em país de risco
+LocalizadaEm,T07,US,1.0
+OrigemIP,T01,IP_BR_NORMAL,1.0
+OrigemIP,T02,IP_US_NORMAL,1.0
+OrigemIP,T03,IP_BR_NORMAL,1.0
+OrigemIP,T04,IP_CN_RISCO,1.0 # IP de alto risco
+OrigemIP,T05,IP_RU_RISCO,1.0 # IP de alto risco
+OrigemIP,T06,IP_RU_RISCO,1.0 # IP de alto risco
+OrigemIP,T07,IP_US_NORMAL,1.0
+
+# --- Alvo de Aprendizagem (Labels) ---
+# Transações fraudulentas conhecidas
+Fraude,T04,1.0
+Fraude,T05,1.0
+
+# Transações legítimas conhecidas
+Fraude,T01,0.0
+Fraude,T02,0.0
+Fraude,T03,0.0
+Fraude,T06,0.0 # Transação de cliente confiável, mesmo que em local de risco

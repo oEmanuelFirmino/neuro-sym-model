@@ -3,10 +3,9 @@ import re
 from pathlib import Path
 from typing import List, Dict, Tuple
 
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-
-from src.tensor import Tensor
-from src.logic import Formula, Atom, Forall, Variable, Constant, Implies, And, Or, Not
+# As importações agora são relativas ao pacote 'src'
+from ..tensor import Tensor
+from ..logic import Formula, Atom, Forall, Variable, Constant, Implies, And, Or, Not
 
 
 class KnowledgeBaseLoader:
@@ -15,26 +14,28 @@ class KnowledgeBaseLoader:
 
     def load_domain(self, domain_file: str, embedding_dim: int) -> Dict[str, Tensor]:
         grounding_env = {}
-        with open(self.base_path / domain_file, "r") as f:
+        with open(self.base_path / domain_file, "r", encoding="utf-8") as f:
             for line in f:
-                const_name = line.strip()
-                if const_name:
-
+                line = line.split("#")[0].strip()
+                if line:
                     embedding = [
                         [
-                            (hash(const_name + str(i)) % 1000 / 1000.0)
+                            (hash(line + str(i)) % 1000 / 1000.0)
                             for i in range(embedding_dim)
                         ]
                     ]
-                    grounding_env[const_name] = Tensor(embedding, requires_grad=True)
+                    grounding_env[line] = Tensor(embedding, requires_grad=True)
         return grounding_env
 
     def load_facts(self, facts_file: str) -> List[Tuple[Formula, float]]:
         facts = []
-        with open(self.base_path / facts_file, "r") as f:
+        with open(self.base_path / facts_file, "r", encoding="utf-8") as f:
             for line in f:
+                line = line.split("#")[0].strip()
+                if not line:
+                    continue
                 parts = [p.strip() for p in line.split(",")]
-                if len(parts) < 3:
+                if len(parts) < 2:
                     continue
                 pred_name = parts[0]
                 constants = [Constant(name) for name in parts[1:-1]]
@@ -44,9 +45,9 @@ class KnowledgeBaseLoader:
 
     def load_rules(self, rules_file: str) -> List[Formula]:
         rules = []
-        with open(self.base_path / rules_file, "r") as f:
+        with open(self.base_path / rules_file, "r", encoding="utf-8") as f:
             for line in f:
-                line = line.strip()
+                line = line.split("#")[0].strip()
                 if line:
                     rules.append(self._parse_rule(line))
         return rules
@@ -59,49 +60,60 @@ class KnowledgeBaseLoader:
             .replace("~", "¬")
         )
 
-        quantifier_match = re.match(r"forall\s+([a-zA-Z0-9_]+):\s*\((.*)\)", rule_str)
+        quantifier_match = re.match(
+            r"forall\s+([a-zA-Z0-9_,\s]+?):\s*\((.*)\)", rule_str
+        )
         if quantifier_match:
-            var_name, formula_str = quantifier_match.groups()
-            variable = Variable(var_name)
+            var_names_str, formula_str = quantifier_match.groups()
+            var_names = [v.strip() for v in var_names_str.split(",")]
+            variables = {name: Variable(name) for name in var_names}
 
-            return Forall(
-                variable,
-                self._parse_formula_str(formula_str.strip(), {var_name: variable}),
-            )
+            parsed_formula = self._parse_formula_str(formula_str.strip(), variables)
+
+            nested_formula = parsed_formula
+            for var_name in reversed(var_names):
+                nested_formula = Forall(variables[var_name], nested_formula)
+            return nested_formula
         else:
             raise ValueError(f"Formato de regra inválido ou não suportado: {rule_str}")
 
     def _parse_formula_str(
         self, formula_str: str, variables: Dict[str, Variable]
     ) -> Formula:
-
         formula_str = formula_str.strip()
 
+        if formula_str.startswith("¬"):
+            return Not(self._parse_formula_str(formula_str[1:], variables))
+
         if formula_str.startswith("(") and formula_str.endswith(")"):
-            formula_str = formula_str[1:-1]
+            formula_str = formula_str[1:-1].strip()
 
         if "→" in formula_str:
             antecedent_str, consequent_str = formula_str.split("→", 1)
-            antecedent = self._parse_formula_str(antecedent_str.strip(), variables)
-            consequent = self._parse_formula_str(consequent_str.strip(), variables)
-            return Implies(antecedent, consequent)
+            return Implies(
+                self._parse_formula_str(antecedent_str.strip(), variables),
+                self._parse_formula_str(consequent_str.strip(), variables),
+            )
+
+        if "∨" in formula_str:
+            left_str, right_str = formula_str.split("∨", 1)
+            return Or(
+                self._parse_formula_str(left_str.strip(), variables),
+                self._parse_formula_str(right_str.strip(), variables),
+            )
 
         if "∧" in formula_str:
             left_str, right_str = formula_str.split("∧", 1)
-            left = self._parse_formula_str(left_str.strip(), variables)
-            right = self._parse_formula_str(right_str.strip(), variables)
-            return And(left, right)
+            return And(
+                self._parse_formula_str(left_str.strip(), variables),
+                self._parse_formula_str(right_str.strip(), variables),
+            )
 
         atom_match = re.match(r"([a-zA-Z0-9_]+)\((.*)\)", formula_str)
         if atom_match:
             pred_name, terms_str = atom_match.groups()
             term_names = [t.strip() for t in terms_str.split(",")]
-            terms = []
-            for name in term_names:
-                if name in variables:
-                    terms.append(variables[name])
-                else:
-                    terms.append(Constant(name))
+            terms = [variables.get(name, Constant(name)) for name in term_names]
             return Atom(pred_name, terms)
 
         raise ValueError(f"Não foi possível interpretar a sub-fórmula: {formula_str}")

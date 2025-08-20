@@ -1,0 +1,27 @@
+# Clientes
+C1001
+C1002
+C1003
+C2001
+C2002
+
+# Transações
+T01
+T02
+T03
+T04
+T05
+T06
+T07
+
+# Países
+BR
+US
+CN
+RU
+
+# Endereços IP
+IP_BR_NORMAL
+IP_US_NORMAL
+IP_RU_RISCO
+IP_CN_RISCO

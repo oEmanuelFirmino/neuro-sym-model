@@ -1,0 +1,11 @@
+# Regra 1: Para toda a transação 't' e todo o 'ip', se 't' veio de 'ip' e 'ip' é de alto risco, então 't' é suspeita.
+forall t, ip: (OrigemIP(t, ip) & IPdeAltoRisco(ip) -> TransacaoSuspeita(t))
+
+# Regra 2: Para toda a transação 't' e todo o cliente 'c', se 't' foi realizada por 'c' e 'c' é novo, então 't' é suspeita.
+forall t, c: (RealizadaPor(t, c) & ClienteNovo(c) -> TransacaoSuspeita(t))
+
+# Regra 3: Para toda a transação 't', se 't' é suspeita, então é provável que seja uma fraude.
+forall t: (TransacaoSuspeita(t) -> Fraude(t))
+
+# Regra 4: Para toda a transação 't' e todo o cliente 'c', se 't' foi realizada por 'c' e 'c' é confiável, então 't' NÃO é uma fraude.
+forall t, c: (RealizadaPor(t, c) & ClienteConfiavel(c) -> ¬Fraude(t))

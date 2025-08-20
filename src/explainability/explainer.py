@@ -15,7 +15,9 @@ def explain_inference(
 
     truth_value_tensor = interpreter.eval_formula(formula, {})
 
-    truth_value_tensor.backward()
+    scalar_truth_value = truth_value_tensor.sum()
+
+    scalar_truth_value.backward()
 
     influences = {}
     for name, tensor in interpreter.grounding_env.items():
