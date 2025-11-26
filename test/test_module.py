@@ -1,34 +1,26 @@
 import sys
 import logging
+import pytest
 
 try:
     from src.neurosym.tensor.tensor import Tensor
     from src.neurosym.module.module import Module, Linear, Sigmoid, ReLU
 except ImportError:
-    print("❌ Erro ao importar módulos.")
-    print(
-        "💡 Certifique-se de que os arquivos 'tensor.py' e 'module.py' estão nos diretórios corretos."
-    )
-    sys.exit(1)
+    pytest.fail("❌ Erro ao importar módulos.", pytrace=False)
 
 
 class ModuleTestFormatter:
     def __init__(self, log_level=logging.INFO):
-        self.logger = self._setup_logger(log_level)
-
-    def _setup_logger(self, log_level):
-        logger = logging.getLogger("ModuleTest")
-        logger.setLevel(log_level)
-        if logger.hasHandlers():
-            logger.handlers.clear()
-        handler = logging.StreamHandler(sys.stdout)
-        handler.setLevel(log_level)
-        formatter = logging.Formatter(
-            "%(asctime)s | %(name)s | %(message)s", datefmt="%H:%M:%S"
-        )
-        handler.setFormatter(formatter)
-        logger.addHandler(handler)
-        return logger
+        self.logger = logging.getLogger("ModuleTest")
+        self.logger.setLevel(log_level)
+        if not self.logger.handlers:
+            handler = logging.StreamHandler(sys.stdout)
+            handler.setLevel(log_level)
+            formatter = logging.Formatter(
+                "%(asctime)s | %(name)s | %(message)s", datefmt="%H:%M:%S"
+            )
+            handler.setFormatter(formatter)
+            self.logger.addHandler(handler)
 
     def print_banner(self, title: str):
         self.logger.info("")
@@ -61,65 +53,91 @@ class ModuleTestFormatter:
             self.logger.info(f"     Grad: {self._format_data(tensor.grad.data)}")
 
 
-class ModuleTestSuite:
-    def __init__(self):
-        self.formatter = ModuleTestFormatter()
+@pytest.fixture
+def formatter():
+    return ModuleTestFormatter()
 
-    def test_linear_layer(self):
-        self.formatter.print_section_header("Teste da Camada Linear (Linear Layer)")
+
+class TestModule:
+    def test_linear_layer(self, formatter):
+        formatter.print_section_header("Teste da Camada Linear (Linear Layer)")
 
         in_features, out_features = 3, 2
         linear_layer = Linear(in_features, out_features)
 
         x = Tensor([[1.0, 2.0, 3.0]], requires_grad=True)
-        self.formatter.print_tensor_info("Input (x)", x)
+        formatter.print_tensor_info("Input (x)", x)
 
-        self.formatter.logger.info("  ⚙️  Executando forward pass...")
+        formatter.logger.info("  ⚙️  Executando forward pass...")
         output = linear_layer(x)
-        self.formatter.print_tensor_info("Output", output)
+        formatter.print_tensor_info("Output", output)
 
-        self.formatter.logger.info("  ⚙️  Executando backward pass...")
+        assert output.shape == (1, out_features)
+        assert output.requires_grad
+
+        formatter.logger.info("  ⚙️  Executando backward pass...")
         loss = output.sum()
         loss.backward()
 
-        self.formatter.print_tensor_info("Output (após backward)", output)
-        self.formatter.print_tensor_info("Input (x) (após backward)", x)
+        formatter.print_tensor_info("Output (após backward)", output)
+        formatter.print_tensor_info("Input (x) (após backward)", x)
 
-        self.formatter.logger.info(f"  🔹 Parâmetros da Camada Linear:")
-        self.formatter.print_tensor_info("  Weights", linear_layer.weights)
-        self.formatter.print_tensor_info("  Bias", linear_layer.bias)
-        self.formatter.logger.info("  ✅ Teste da camada linear concluído.")
+        assert x.grad is not None
+        assert linear_layer.weights.grad is not None
+        assert linear_layer.bias.grad is not None
 
-    def test_sigmoid_activation(self):
-        self.formatter.print_section_header("Teste da Ativação Sigmoid")
+        formatter.logger.info(f"  🔹 Parâmetros da Camada Linear:")
+        formatter.print_tensor_info("  Weights", linear_layer.weights)
+        formatter.print_tensor_info("  Bias", linear_layer.bias)
+        formatter.logger.info("  ✅ Teste da camada linear concluído.")
+
+    def test_sigmoid_activation(self, formatter):
+        formatter.print_section_header("Teste da Ativação Sigmoid")
         sigmoid = Sigmoid()
         x = Tensor([[-1.0, 0.0, 2.0]], requires_grad=True)
-        self.formatter.print_tensor_info("Input (x)", x)
+        formatter.print_tensor_info("Input (x)", x)
 
         output = sigmoid(x)
+
+        flat_out = output._flatten(output.data)
+        assert all(0.0 < val < 1.0 for val in flat_out)
+
         loss = output.sum()
         loss.backward()
 
-        self.formatter.print_tensor_info("Output (após backward)", output)
-        self.formatter.print_tensor_info("Input (x) (após backward)", x)
-        self.formatter.logger.info("  ✅ Teste da ativação Sigmoid concluído.")
+        formatter.print_tensor_info("Output (após backward)", output)
+        formatter.print_tensor_info("Input (x) (após backward)", x)
 
-    def test_relu_activation(self):
-        self.formatter.print_section_header("Teste da Ativação ReLU")
+        assert x.grad is not None
+        formatter.logger.info("  ✅ Teste da ativação Sigmoid concluído.")
+
+    def test_relu_activation(self, formatter):
+        formatter.print_section_header("Teste da Ativação ReLU")
         relu = ReLU()
         x = Tensor([[-1.0, 0.0, 2.0]], requires_grad=True)
-        self.formatter.print_tensor_info("Input (x)", x)
+        formatter.print_tensor_info("Input (x)", x)
 
         output = relu(x)
+
+        flat_out = output._flatten(output.data)
+        assert all(val >= 0 for val in flat_out)
+
+        assert flat_out[0] == 0.0
+
         loss = output.sum()
         loss.backward()
 
-        self.formatter.print_tensor_info("Output (após backward)", output)
-        self.formatter.print_tensor_info("Input (x) (após backward)", x)
-        self.formatter.logger.info("  ✅ Teste da ativação ReLU concluído.")
+        formatter.print_tensor_info("Output (após backward)", output)
+        formatter.print_tensor_info("Input (x) (após backward)", x)
 
-    def test_model_integration(self):
-        self.formatter.print_section_header("Teste de Integração: Rede Neural Simples")
+        flat_grad = x.grad._flatten(x.grad.data)
+        assert flat_grad[0] == 0.0
+        assert flat_grad[2] == 1.0
+
+        formatter.logger.info("  ✅ Teste da ativação ReLU concluído.")
+
+    def test_model_integration(self, formatter):
+        formatter.print_section_header("Teste de Integração: Rede Neural Simples")
 
         class SimpleNet(Module):
             def __init__(self):
@@ -135,26 +153,28 @@ class ModuleTestSuite:
                 return x
 
         model = SimpleNet()
-        self.formatter.logger.info("  🔹 Modelo 'SimpleNet' criado.")
+        formatter.logger.info("  🔹 Modelo 'SimpleNet' criado.")
 
         params = model.parameters()
-        self.formatter.logger.info(
+        formatter.logger.info(
             f"  🔹 Número de tensores de parâmetros encontrados: {len(params)}"
         )
+
+        assert len(params) == 4
 
         x = Tensor([[1.0, 2.0, 3.0]], requires_grad=True)
         output = model(x)
         loss = output.sum()
         loss.backward()
 
-        self.formatter.logger.info(
-            "  🔹 Gradientes calculados para todos os parâmetros."
-        )
+        formatter.logger.info("  🔹 Gradientes calculados para todos os parâmetros.")
+
         for i, p in enumerate(params):
-            self.formatter.print_tensor_info(f"  Param {i+1}", p)
+            formatter.print_tensor_info(f"  Param {i+1}", p)
+            assert p.grad is not None
 
         model.zero_grad()
-        self.formatter.logger.info(
+        formatter.logger.info(
             "  🔹 Gradientes zerados com sucesso usando `zero_grad()`."
         )
 
@@ -162,32 +182,12 @@ class ModuleTestSuite:
             p.grad is not None and all(g == 0.0 for g in p.grad._flatten(p.grad.data))
             for p in params
         )
+
         if all_grads_zero:
-            self.formatter.logger.info("  ✅ Verificação `zero_grad` bem-sucedida.")
+            formatter.logger.info("  ✅ Verificação `zero_grad` bem-sucedida.")
         else:
-            self.formatter.logger.error("  ❌ Falha na verificação de `zero_grad`.")
+            formatter.logger.error("  ❌ Falha na verificação de `zero_grad`.")
 
-        self.formatter.logger.info("  ✅ Teste de integração concluído.")
+        assert all_grads_zero, "Os gradientes não foram zerados corretamente."
 
-    def run_all(self):
-        self.formatter.print_banner("Teste de Módulos de Rede Neural")
-        self.test_linear_layer()
-        self.test_sigmoid_activation()
-        self.test_relu_activation()
-        self.test_model_integration()
-        self.formatter.logger.info("\n🎉 Todos os testes foram concluídos com sucesso!")
-
-
-def main():
-    try:
-        suite = ModuleTestSuite()
-        suite.run_all()
-    except Exception as e:
-        print(f"❌ Erro fatal durante a execução dos testes: {e}")
-        import traceback
-
-        traceback.print_exc()
-
-
-if __name__ == "__main__":
-    main()
+        formatter.logger.info("  ✅ Teste de integração concluído.")

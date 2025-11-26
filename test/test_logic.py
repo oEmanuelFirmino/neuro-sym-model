@@ -1,5 +1,6 @@
 import sys
 import logging
+import pytest
 
 try:
     from src.neurosym.logic.logic import (
@@ -15,27 +16,22 @@ try:
         Exists,
     )
 except ImportError:
-    print("❌ Erro ao importar módulos de lógica.")
-    sys.exit(1)
+    pytest.fail("❌ Erro ao importar módulos de lógica.", pytrace=False)
 
 
 class LogicTestFormatter:
     def __init__(self, log_level=logging.INFO):
-        self.logger = self._setup_logger(log_level)
+        self.logger = logging.getLogger("LogicASTTest")
+        self.logger.setLevel(log_level)
 
-    def _setup_logger(self, log_level):
-        logger = logging.getLogger("LogicASTTest")
-        logger.setLevel(log_level)
-        if logger.hasHandlers():
-            logger.handlers.clear()
-        handler = logging.StreamHandler(sys.stdout)
-        handler.setLevel(log_level)
-        formatter = logging.Formatter(
-            "%(asctime)s | %(name)s | %(message)s", datefmt="%H:%M:%S"
-        )
-        handler.setFormatter(formatter)
-        logger.addHandler(handler)
-        return logger
+        if not self.logger.handlers:
+            handler = logging.StreamHandler(sys.stdout)
+            handler.setLevel(log_level)
+            formatter = logging.Formatter(
+                "%(asctime)s | %(name)s | %(message)s", datefmt="%H:%M:%S"
+            )
+            handler.setFormatter(formatter)
+            self.logger.addHandler(handler)
 
     def print_banner(self, title: str):
         self.logger.info("")
@@ -56,24 +52,25 @@ class LogicTestFormatter:
         self.logger.info(f"  ✅ {message}")
 
 
-class LogicTestSuite:
-    def __init__(self):
-        self.formatter = LogicTestFormatter()
+@pytest.fixture
+def formatter():
+    return LogicTestFormatter()
 
-    def test_ast_construction(self):
-        self.formatter.print_section_header(
-            "Construção da Árvore de Sintaxe Abstrata (AST)"
-        )
+
+class TestLogic:
+
+    def test_ast_construction(self, formatter):
+        formatter.print_banner("Teste do Bloco Simbólico (AST Lógica)")
+        formatter.print_section_header("Construção da Árvore de Sintaxe Abstrata (AST)")
 
         x = Variable("x")
         y = Variable("y")
         z = Variable("z")
-
         pedro = Constant("pedro")
         joao = Constant("joao")
         maria = Constant("maria")
 
-        self.formatter.logger.info(
+        formatter.logger.info(
             "  🔹 Termos (Variáveis e Constantes) criados com sucesso."
         )
 
@@ -81,50 +78,38 @@ class LogicTestSuite:
         p2 = Atom("Pai", [y, z])
         p3 = Atom("Avo", [x, z])
 
-        self.formatter.print_formula("Átomo 'Pai(x, y)'", p1)
+        formatter.print_formula("Átomo 'Pai(x, y)'", p1)
+
+        assert str(p1) == "Pai(Var(x), Var(y))"
 
         formula_and = And(p1, p2)
-        self.formatter.print_formula("Fórmula 'E' (And)", formula_and)
+        formatter.print_formula("Fórmula 'E' (And)", formula_and)
+        assert str(formula_and) == "(Pai(Var(x), Var(y)) ∧ Pai(Var(y), Var(z)))"
 
         formula_implies = Implies(formula_and, p3)
-        self.formatter.print_formula("Fórmula 'Implica'", formula_implies)
+        formatter.print_formula("Fórmula 'Implica'", formula_implies)
+        assert (
+            str(formula_implies)
+            == "((Pai(Var(x), Var(y)) ∧ Pai(Var(y), Var(z))) → Avo(Var(x), Var(z)))"
+        )
 
         formula_forall = Forall(x, Forall(y, Forall(z, formula_implies)))
-        self.formatter.print_formula(
-            "Fórmula 'Para Todo' (Forall) aninhada", formula_forall
-        )
+        formatter.print_formula("Fórmula 'Para Todo' (Forall) aninhada", formula_forall)
+
+        assert str(formula_forall).startswith("∀Var(x).(∀Var(y).(∀Var(z).")
 
         formula_not = Not(Atom("Irmao", [pedro, joao]))
-        self.formatter.print_formula("Fórmula 'Não' (Not)", formula_not)
+        formatter.print_formula("Fórmula 'Não' (Not)", formula_not)
+        assert str(formula_not) == "¬(Irmao(Const(pedro), Const(joao)))"
 
         formula_or = Or(Atom("Mae", [maria, joao]), Atom("Pai", [pedro, joao]))
-        self.formatter.print_formula("Fórmula 'Ou' (Or)", formula_or)
+        formatter.print_formula("Fórmula 'Ou' (Or)", formula_or)
+        assert "∨" in str(formula_or)
 
         formula_exists = Exists(z, Atom("Filho", [z, pedro]))
-        self.formatter.print_formula("Fórmula 'Existe' (Exists)", formula_exists)
+        formatter.print_formula("Fórmula 'Existe' (Exists)", formula_exists)
+        assert str(formula_exists) == "∃Var(z).(Filho(Var(z), Const(pedro)))"
 
-        self.formatter.print_success(
-            "Todas as estruturas lógicas foram construídas com sucesso."
+        formatter.print_success(
+            "Todas as estruturas lógicas foram construídas e validadas com sucesso."
         )
-
-    def run_all(self):
-        self.formatter.print_banner("Teste do Bloco Simbólico (AST Lógica)")
-        self.test_ast_construction()
-        self.formatter.logger.info(
-            "\n🎉 Todos os testes de lógica foram concluídos com sucesso!"
-        )
-
-
-def main():
-    try:
-        suite = LogicTestSuite()
-        suite.run_all()
-    except Exception as e:
-        print(f"❌ Erro fatal durante a execução dos testes: {e}")
-        import traceback
-
-        traceback.print_exc()
-
-
-if __name__ == "__main__":
-    main()

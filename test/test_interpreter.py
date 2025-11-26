@@ -1,33 +1,39 @@
 import sys
 import logging
+import pytest
 
 try:
     from src.neurosym.tensor.tensor import Tensor
     from src.neurosym.module.module import Module, Linear, Sigmoid
-    from src.neurosym.logic.logic import Formula, Atom, Forall, Variable, Constant, Implies
-    from src.neurosym.interpreter.interpreter import Interpreter, PredicateMap, GroundingEnv
+    from src.neurosym.logic.logic import (
+        Formula,
+        Atom,
+        Forall,
+        Variable,
+        Constant,
+        Implies,
+    )
+    from src.neurosym.interpreter.interpreter import (
+        Interpreter,
+    )
 except ImportError:
-    print("❌ Erro ao importar módulos para o teste do interpretador.")
-    sys.exit(1)
+    pytest.fail(
+        "❌ Erro ao importar módulos para o teste do interpretador.", pytrace=False
+    )
 
 
 class InterpreterTestFormatter:
     def __init__(self, log_level=logging.INFO):
-        self.logger = self._setup_logger(log_level)
-
-    def _setup_logger(self, log_level):
-        logger = logging.getLogger("InterpreterTest")
-        logger.setLevel(log_level)
-        if logger.hasHandlers():
-            logger.handlers.clear()
-        handler = logging.StreamHandler(sys.stdout)
-        handler.setLevel(log_level)
-        formatter = logging.Formatter(
-            "%(asctime)s | %(name)s | %(message)s", datefmt="%H:%M:%S"
-        )
-        handler.setFormatter(formatter)
-        logger.addHandler(handler)
-        return logger
+        self.logger = logging.getLogger("InterpreterTest")
+        self.logger.setLevel(log_level)
+        if not self.logger.handlers:
+            handler = logging.StreamHandler(sys.stdout)
+            handler.setLevel(log_level)
+            formatter = logging.Formatter(
+                "%(asctime)s | %(name)s | %(message)s", datefmt="%H:%M:%S"
+            )
+            handler.setFormatter(formatter)
+            self.logger.addHandler(handler)
 
     def print_banner(self, title: str):
         self.logger.info("")
@@ -44,8 +50,10 @@ class InterpreterTestFormatter:
         self.logger.info(f"  🔹 {message}")
 
     def print_tensor(self, name: str, tensor: Tensor):
-        data = f"[{', '.join([f'{x:.4f}' for x in tensor._flatten(tensor.data)])}]"
-        self.logger.info(f"     Tensor '{name}': {data}")
+
+        flat_data = tensor._flatten(tensor.data)
+        data_str = f"[{', '.join([f'{x:.4f}' for x in flat_data])}]"
+        self.logger.info(f"     Tensor '{name}': {data_str}")
 
     def print_result(self, formula: Formula, result: Tensor):
         self.logger.info(f"  🔹 Avaliando Fórmula: {formula}")
@@ -53,117 +61,111 @@ class InterpreterTestFormatter:
         self.logger.info(f"     Resultado (Grau de Verdade): {scalar_value:.4f}")
 
 
-class InterpreterTestSuite:
-    def __init__(self):
-        self.formatter = InterpreterTestFormatter()
-        self.predicate_map: PredicateMap = {}
-        self.grounding_env: GroundingEnv = {}
+class PredicateNet(Module):
+    def __init__(self, in_features):
+        super().__init__()
+        self.add_module("layer", Linear(in_features, 1))
+        self.add_module("activation", Sigmoid())
 
-    def setup_environment(self):
-        self.formatter.print_section_header("1. Configurando o Ambiente de Grounding")
+    def forward(self, x):
+        return self.activation(self.layer(x))
 
-        embedding_dim = 2
 
-        self.grounding_env = {
-            "socrates": Tensor([[1.0, 0.0]], requires_grad=True),
-            "platao": Tensor([[0.9, 0.1]], requires_grad=True),
-            "aristoteles": Tensor([[0.8, 0.2]], requires_grad=True),
-        }
-        self.formatter.print_info("Ambiente de Grounding (Constantes -> Embeddings):")
-        for name, tensor in self.grounding_env.items():
-            self.formatter.print_tensor(name, tensor)
+@pytest.fixture
+def formatter():
+    return InterpreterTestFormatter()
 
-        class PredicateNet(Module):
-            def __init__(self, in_features):
-                super().__init__()
-                self.add_module("layer", Linear(in_features, 1))
-                self.add_module("activation", Sigmoid())
 
-            def forward(self, x):
-                return self.activation(self.layer(x))
+@pytest.fixture
+def env_setup(formatter):
+    formatter.print_section_header("Configurando o Ambiente de Grounding (Fixture)")
 
-        self.predicate_map = {
-            "Mortal": PredicateNet(embedding_dim),
-            "Homem": PredicateNet(embedding_dim),
-            "Grego": PredicateNet(embedding_dim),
-        }
-        self.formatter.print_info(
-            "Mapa de Predicados (Nomes -> Módulos Neurais) criado."
-        )
+    embedding_dim = 2
 
-    def test_atom_evaluation(self):
-        self.formatter.print_section_header("2. Testando a Avaliação de Átomos")
-        interpreter = Interpreter(self.predicate_map, self.grounding_env)
+    grounding_env = {
+        "socrates": Tensor([[1.0, 0.0]], requires_grad=True),
+        "platao": Tensor([[0.9, 0.1]], requires_grad=True),
+        "aristoteles": Tensor([[0.8, 0.2]], requires_grad=True),
+    }
+
+    for name, tensor in grounding_env.items():
+        formatter.print_tensor(name, tensor)
+
+    predicate_map = {
+        "Mortal": PredicateNet(embedding_dim),
+        "Homem": PredicateNet(embedding_dim),
+        "Grego": PredicateNet(embedding_dim),
+    }
+
+    formatter.print_info("Mapa de Predicados criado com sucesso.")
+
+    return grounding_env, predicate_map
+
+
+class TestInterpreter:
+    def test_atom_evaluation(self, env_setup, formatter):
+        formatter.print_section_header("Testando a Avaliação de Átomos")
+
+        grounding_env, predicate_map = env_setup
+        interpreter = Interpreter(predicate_map, grounding_env)
 
         socrates = Constant("socrates")
         formula = Atom("Mortal", [socrates])
 
         result = interpreter.eval_formula(formula, {})
-        self.formatter.print_result(formula, result)
-        self.formatter.print_info(
-            f"O resultado é um Tensor, permitindo backpropagation."
-        )
 
-    def test_complex_formula_evaluation(self):
-        self.formatter.print_section_header(
-            "3. Testando a Avaliação de Fórmulas Complexas"
-        )
-        interpreter = Interpreter(self.predicate_map, self.grounding_env)
+        formatter.print_result(formula, result)
+        formatter.print_info("O resultado é um Tensor.")
+
+        assert isinstance(result, Tensor), "O resultado da avaliação deve ser um Tensor"
+        assert (
+            result.requires_grad
+        ), "O tensor resultante deve suportar gradiente (requires_grad=True)"
+        assert result.shape == (1, 1) or result.shape == (
+            1,
+        ), f"Shape inesperado: {result.shape}"
+
+    def test_complex_formula_evaluation(self, env_setup, formatter):
+        formatter.print_section_header("Testando a Avaliação de Fórmulas Complexas")
+
+        grounding_env, predicate_map = env_setup
+        interpreter = Interpreter(predicate_map, grounding_env)
 
         x = Variable("x")
 
         axiom = Forall(x, Implies(Atom("Homem", [x]), Atom("Mortal", [x])))
 
         result = interpreter.eval_formula(axiom, {})
-        self.formatter.print_result(axiom, result)
+        formatter.print_result(axiom, result)
 
-        try:
-            result.backward()
-            self.formatter.print_info(
-                "Backpropagation executado com sucesso no resultado da fórmula."
+        assert isinstance(result, Tensor)
+
+        formatter.print_info("Executando backward pass...")
+
+        for t in grounding_env.values():
+            t.zero_grad()
+
+        result.backward()
+
+        formatter.print_info("Backpropagation executado.")
+
+        some_grad = False
+        for name, const_tensor in grounding_env.items():
+            if const_tensor.grad:
+
+                flat_grad = const_tensor.grad._flatten(const_tensor.grad.data)
+                if any(g != 0 for g in flat_grad):
+                    some_grad = True
+                    formatter.print_info(
+                        f"Gradiente detectado em '{name}': {flat_grad}"
+                    )
+
+        if not some_grad:
+            formatter.logger.warning(
+                "Nenhum gradiente foi calculado para os embeddings."
             )
 
-            some_grad = False
-            for const_tensor in self.grounding_env.values():
-                if const_tensor.grad and any(
-                    g != 0 for g in const_tensor.grad._flatten(const_tensor.grad.data)
-                ):
-                    some_grad = True
-                    break
-            if some_grad:
-                self.formatter.print_info(
-                    "Verificação: Gradientes foram populados nos embeddings."
-                )
-            else:
-                self.formatter.logger.warning(
-                    "Aviso: Nenhum gradiente foi calculado para os embeddings."
-                )
-
-        except Exception as e:
-            self.formatter.logger.error(f"Falha na retropropagação: {e}")
-
-    def run_all(self):
-        self.formatter.print_banner(
-            "Teste do Bloco de Integração (Interpretador Neuro-Simbólico)"
-        )
-        self.setup_environment()
-        self.test_atom_evaluation()
-        self.test_complex_formula_evaluation()
-        self.formatter.logger.info(
-            "\n🎉 Todos os testes de integração foram concluídos com sucesso!"
-        )
-
-
-def main():
-    try:
-        suite = InterpreterTestSuite()
-        suite.run_all()
-    except Exception as e:
-        print(f"❌ Erro fatal durante a execução dos testes: {e}")
-        import traceback
-
-        traceback.print_exc()
-
-
-if __name__ == "__main__":
-    main()
+        assert (
+            some_grad
+        ), "Falha na retropropagação: Os gradientes dos embeddings permaneceram zerados ou None."
+        formatter.print_info("✅ Verificação de gradientes concluída com sucesso.")
