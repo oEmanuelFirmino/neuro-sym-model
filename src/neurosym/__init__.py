@@ -9,9 +9,15 @@ __version__ = "0.1.0"
 
 __all__ = [
     "Tensor",
-    "Formula", "Atom", "Forall", "Implies",
-    "Module", "Linear", "Sigmoid", "ReLU",
+    "Formula",
+    "Atom",
+    "Forall",
+    "Implies",
+    "Module",
+    "Linear",
+    "Sigmoid",
+    "ReLU",
     "Interpreter",
     "Trainer",
-    "KnowledgeBaseLoader"
+    "KnowledgeBaseLoader",
 ]

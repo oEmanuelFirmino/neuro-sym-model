@@ -7,6 +7,7 @@ class Term(ABC):
     @abstractmethod
     def __repr__(self) -> str: ...
 
+
 class Variable(Term):
     def __init__(self, name: str):
         self.name = name
@@ -25,7 +26,8 @@ class Constant(Term):
 
 class Formula(ABC):
     @abstractmethod
-    def __repr__(self) -> str:...
+    def __repr__(self) -> str: ...
+
 
 class Atom(Formula):
     def __init__(self, predicate_name: str, terms: List[Term]):

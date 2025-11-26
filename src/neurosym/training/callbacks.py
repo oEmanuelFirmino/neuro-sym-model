@@ -7,9 +7,9 @@ if TYPE_CHECKING:
     from .trainer import Trainer
 
 from src.neurosym.training.saver import save_model
-from src.neurosym.interpreter import PredicateMap, GroundingEnv
 
 logger = logging.getLogger("CallbackSystem")
+
 
 @abstractmethod
 class Callback:
@@ -81,10 +81,12 @@ class ModelCheckpoint(Callback):
                 f"ModelCheckpoint: métrica '{self.monitor}' não encontrada nos logs: {self.logs}"
             )
             return
-        
+
         improved = (
-            self.mode == "min" and current_val < self.best or
-            self.mode == "max" and current_val > self.best
+            self.mode == "min"
+            and current_val < self.best
+            or self.mode == "max"
+            and current_val > self.best
         )
 
         if self.save_best_only and not improved:
