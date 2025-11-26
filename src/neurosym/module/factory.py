@@ -1,5 +1,5 @@
 from typing import List, Dict, Any
-from src.module.module import Module, Linear, Sigmoid, ReLU, Sequential
+from src.neurosym.module import Module, Linear, Sigmoid, ReLU, Sequential
 
 
 LAYER_MAP = {

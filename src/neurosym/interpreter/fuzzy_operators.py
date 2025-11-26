@@ -1,5 +1,5 @@
 from typing import Dict, Callable
-from src.tensor import Tensor
+from src.neurosym.tensor import Tensor
 
 FuzzyOperator = Callable[[Tensor, Tensor], Tensor]
 

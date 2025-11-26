@@ -1,6 +1,5 @@
-import math
-from typing import Any, Tuple, Union, Iterable, Optional, Callable, List
-from src.tensor.backend import get_backend
+from typing import Any, Tuple, Union, Iterable, Optional, List
+from src.neurosym.tensor.backend import get_backend
 
 Number = Union[int, float]
 

@@ -1,12 +1,11 @@
 import logging
 import sys
 from pathlib import Path
-from typing import Any
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 try:
-    from tensor.tensor import Tensor
+    from src.neurosym.tensor.tensor import Tensor
 except ImportError:
     print(f"❌ Erro ao importar Tensor")
     sys.exit(1)
