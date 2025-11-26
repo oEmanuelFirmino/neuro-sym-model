@@ -5,9 +5,7 @@ from typing import List
 
 class Term(ABC):
     @abstractmethod
-    def __repr__(self) -> str:
-        pass
-
+    def __repr__(self) -> str: ...
 
 class Variable(Term):
     def __init__(self, name: str):
@@ -27,9 +25,7 @@ class Constant(Term):
 
 class Formula(ABC):
     @abstractmethod
-    def __repr__(self) -> str:
-        pass
-
+    def __repr__(self) -> str:...
 
 class Atom(Formula):
     def __init__(self, predicate_name: str, terms: List[Term]):

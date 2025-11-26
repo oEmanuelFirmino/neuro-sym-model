@@ -1,12 +1,8 @@
 import sys
 import logging
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 try:
-    from src.logic.logic import (
-        Term,
+    from src.neurosym.logic.logic import (
         Variable,
         Constant,
         Formula,

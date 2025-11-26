@@ -1,15 +1,11 @@
 import sys
 import logging
-from pathlib import Path
-from typing import Dict
-
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 try:
-    from src.tensor.tensor import Tensor
-    from src.module.module import Module, Linear, Sigmoid
-    from src.logic.logic import Formula, Atom, Forall, Variable, Constant, Implies, And
-    from src.interpreter.interpreter import Interpreter, PredicateMap, GroundingEnv
+    from src.neurosym.tensor.tensor import Tensor
+    from src.neurosym.module.module import Module, Linear, Sigmoid
+    from src.neurosym.logic.logic import Formula, Atom, Forall, Variable, Constant, Implies
+    from src.neurosym.interpreter.interpreter import Interpreter, PredicateMap, GroundingEnv
 except ImportError:
     print("❌ Erro ao importar módulos para o teste do interpretador.")
     sys.exit(1)

@@ -1,12 +1,9 @@
 import sys
 import logging
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 try:
-    from src.tensor.tensor import Tensor
-    from src.training.optimizer import SGD
+    from src.neurosym.tensor.tensor import Tensor
+    from src.neurosym.training.optimizer import SGD
 except ImportError:
     print(
         "❌ Erro ao importar um ou mais módulos necessários para o teste do otimizador."
