@@ -1,2 +1,18 @@
+# Para todo 'x', se 'x' é grego, então 'x' é homem.
 forall x: (Grego(x) -> Homem(x))
+# Para todo 'x', se 'x' é homem, então 'x' é mortal.
 forall x: (Homem(x) -> Mortal(x))
+# Portanto, para todo 'x', se 'x' é grego, então 'x' é mortal.
+forall x: (Grego(x) -> Mortal(x))
+# Regra adicional: Sócrates é grego.
+Grego(Socrates)
+# Portanto, Sócrates é mortal.
+Mortal(Socrates)
+# Regra adicional: Todos os mortais são humanos.
+forall x: (Mortal(x) -> Humano(x))
+# Portanto, Sócrates é humano.
+Humano(Socrates)
+# Regra adicional: Todos os humanos são seres vivos.
+forall x: (Humano(x) -> SerVivo(x))
+# Portanto, Sócrates é um ser vivo.
+SerVivo(Socrates)

@@ -4,15 +4,14 @@ import argparse
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(PROJECT_ROOT))
 
 try:
-    from src.interpreter import Interpreter
-    from src.data_manager import KnowledgeBaseLoader
-    from src.training.saver import load_model
-    from src.module.factory import create_model_from_config
+    from src.neurosym.interpreter import Interpreter
+    from src.neurosym.data_manager import KnowledgeBaseLoader
+    from src.neurosym.training.saver import load_model
+    from src.neurosym.module.factory import create_model_from_config
 
-    from src.explainability.explainer import explain_inference
+    from src.neurosym.explainability.explainer import explain_inference
 except ImportError:
     print("❌ Erro ao importar um ou mais módulos necessários para a inferência.")
     sys.exit(1)

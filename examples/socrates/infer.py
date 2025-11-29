@@ -7,12 +7,10 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 try:
-    from src.tensor import Tensor
-    from src.module import Module, Linear, Sigmoid
-    from src.logic import Formula
-    from src.interpreter import Interpreter
-    from src.data_manager import KnowledgeBaseLoader
-    from src.training.saver import load_model
+    from src.neurosym.module import Module, Linear, Sigmoid
+    from src.neurosym.interpreter import Interpreter
+    from src.neurosym.data_manager import KnowledgeBaseLoader
+    from src.neurosym.training.saver import load_model
 except ImportError:
     print("❌ Erro ao importar um ou mais módulos necessários para a inferência.")
     sys.exit(1)

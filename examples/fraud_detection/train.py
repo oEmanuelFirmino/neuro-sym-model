@@ -6,7 +6,7 @@ import logging
 import argparse
 from pathlib import Path
 
-from src.tensor.backend import set_backend
+from src.neurosym.tensor.backend import set_backend
 
 set_backend("numpy")
 
@@ -14,13 +14,13 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 try:
-    from src.interpreter import Interpreter
-    from src.training.optimizer import SGD
-    from src.data_manager.loader import KnowledgeBaseLoader
-    from src.training.saver import save_model, load_model
-    from src.training.trainer import Trainer
-    from src.module.factory import create_model_from_config
-    from src.training.callbacks import ModelCheckpoint
+    from src.neurosym.interpreter import Interpreter
+    from src.neurosym.training.optimizer import SGD
+    from src.neurosym.data_manager.loader import KnowledgeBaseLoader
+    from src.neurosym.training.saver import load_model
+    from src.neurosym.training.trainer import Trainer
+    from src.neurosym.module.factory import create_model_from_config
+    from src.neurosym.training.callbacks import ModelCheckpoint
 except ImportError as e:
     print(f"❌ Erro ao importar a biblioteca neuro-simbólica: {e}")
     sys.exit(1)

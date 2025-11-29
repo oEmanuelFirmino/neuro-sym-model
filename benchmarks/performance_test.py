@@ -1,14 +1,11 @@
-import sys
 import time
 from pathlib import Path
 
-
 PROJECT_ROOT = Path(__file__).parent.parent
-sys.path.insert(0, str(PROJECT_ROOT))
 
 
-from src.tensor import Tensor
-from src.tensor.backend import set_backend
+from src.neurosym.tensor import Tensor
+from src.neurosym.tensor.backend import set_backend
 
 
 def run_benchmark(backend_name: str, matrix_size: int):
@@ -28,7 +25,6 @@ def run_benchmark(backend_name: str, matrix_size: int):
     a = Tensor(data_a, requires_grad=True)
     b = Tensor(data_b, requires_grad=True)
 
-    c = a + b
     d = a.dot(b)
     e = d.relu()
     f = e.transpose()

@@ -1,16 +1,18 @@
-# pyproject.toml
-
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
 
 [project]
-name = "neuro-symbolic-core" # Nome atualizado para refletir a natureza de biblioteca
+name = "neuro-symbolic-core"
 version = "0.1.0"
 description = "Neuro-Symbolic Model from scratch"
+readme = "README.md"
+requires-python = ">=3.12"
+license = {text = "MIT"}
 authors = [
     {name = "Emanuel Firmino"},
 ]
+keywords = ["neuro-symbolic", "logic", "tensor", "ai"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -18,15 +20,10 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.12",
 ]
-readme = "README.md"
-requires-python = ">=3.12"
 dependencies = [
     "pyyaml>=6.0.2",
-    "numpy>=1.26.0", # <-- ADICIONAR NOVA DEPENDÊNCIA
+    "numpy>=1.26.0",
 ]
-
-[project.scripts]
-test-tensor = "src.tensor.test_tensor:main"
 
 [project.optional-dependencies]
 dev = [
@@ -36,6 +33,22 @@ dev = [
     "flake8>=4.0",
 ]
 
+[project.urls]
+"Homepage" = "https://github.com/oEmanuelFirmino/neuro-sym-model"
+
+# --- CONFIGURAÇÃO DE SCRIPTS (CLI) ---
+[project.scripts]
+neurosym-infer = "neurosym.inference.infer:main"
+
+# --- FERRAMENTAS DE BUILD E TESTE ---
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
 [tool.black]
 line-length = 88
 target-version = ["py312"]
@@ -44,6 +57,3 @@ include = "\\.pyi?$"
 [tool.isort]
 profile = "black"
 line_length = 88
-
-[tool.hatch.build.targets.wheel]
-packages = ["src"]

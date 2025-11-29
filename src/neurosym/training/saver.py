@@ -1,10 +1,7 @@
 import json
 from pathlib import Path
-from typing import Dict
 
-from src.tensor import Tensor
-from src.module import Module, Linear, Sigmoid
-from src.interpreter import PredicateMap, GroundingEnv
+from src.neurosym.interpreter import PredicateMap, GroundingEnv
 
 
 def save_model(path: str, predicate_map: PredicateMap, grounding_env: GroundingEnv):

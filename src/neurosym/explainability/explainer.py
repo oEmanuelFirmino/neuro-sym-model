@@ -1,8 +1,8 @@
 from typing import List, Tuple
 import operator
 
-from src.logic import Formula
-from src.interpreter import Interpreter
+from src.neurosym.logic import Formula
+from src.neurosym.interpreter import Interpreter
 
 
 def explain_inference(

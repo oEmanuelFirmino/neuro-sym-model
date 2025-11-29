@@ -1,5 +1,5 @@
 from typing import List
-from src.tensor.tensor import Tensor
+from src.neurosym.tensor.tensor import Tensor
 
 
 class SGD:

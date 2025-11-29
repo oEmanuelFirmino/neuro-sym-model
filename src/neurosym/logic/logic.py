@@ -5,8 +5,7 @@ from typing import List
 
 class Term(ABC):
     @abstractmethod
-    def __repr__(self) -> str:
-        pass
+    def __repr__(self) -> str: ...
 
 
 class Variable(Term):
@@ -27,8 +26,7 @@ class Constant(Term):
 
 class Formula(ABC):
     @abstractmethod
-    def __repr__(self) -> str:
-        pass
+    def __repr__(self) -> str: ...
 
 
 class Atom(Formula):

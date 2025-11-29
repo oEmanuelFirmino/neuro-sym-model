@@ -4,13 +4,12 @@ from typing import List, Tuple, Dict
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.tensor import Tensor
-from src.logic import Formula
-from src.interpreter import Interpreter
-from src.training.optimizer import SGD
-from src.training.callbacks import Callback
+from src.neurosym.tensor import Tensor
+from src.neurosym.logic import Formula
+from src.neurosym.interpreter import Interpreter
+from src.neurosym.training.optimizer import SGD
+from src.neurosym.training.callbacks import Callback
 
 
 class Trainer:

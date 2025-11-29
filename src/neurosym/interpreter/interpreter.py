@@ -1,7 +1,6 @@
-import re
 from typing import Dict, Optional, Union
-from src.tensor import Tensor
-from src.logic import (
+from src.neurosym.tensor import Tensor
+from src.neurosym.logic import (
     Formula,
     Atom,
     And,
@@ -13,7 +12,7 @@ from src.logic import (
     Variable,
     Term,
 )
-from src.module import Module
+from src.neurosym.module import Module
 from .fuzzy_operators import get_operator, DEFAULT_OPERATORS, FuzzyOperator
 
 PredicateMap = Dict[str, Module]
