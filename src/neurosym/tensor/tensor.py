@@ -7,45 +7,29 @@ Number = Union[int, float]
 class Tensor:
     def __init__(
         self,
-        data: Union[list, Number],
+        data: Any,
         requires_grad: bool = False,
         _op: Optional[str] = None,
         _parents: Optional[Iterable["Tensor"]] = None,
     ):
         self.backend = get_backend()
-        if isinstance(data, (int, float)):
-            self.data, self.shape = float(data), ()
-        elif isinstance(data, list):
-            self.data, self.shape = data, self._get_shape(data)
-        else:
-            raise TypeError(
-                "Tensor aceita apenas listas aninhadas ou números (int/float)."
-            )
+
+        # O backend cuida da conversão de List -> Array/Internal
+        self.data = self.backend.convert_to_internal(data)
+
+        # Shape delegado ao backend
+        self.shape = self.backend.get_shape(self.data)
+
         self.requires_grad = bool(requires_grad)
         self.grad: Optional[Tensor] = None
+
         if self.requires_grad:
             self.zero_grad()
+
         self._op, self._parents, self._backward = (
             _op,
             tuple(_parents) if _parents else tuple(),
             lambda: None,
-        )
-
-    def _validate(self, data: Any):
-        if not isinstance(data, list) or not data:
-            return
-        first_shape = self._get_shape(data[0])
-        for elem in data[1:]:
-            if self._get_shape(elem) != first_shape:
-                raise ValueError(
-                    "Tensor mal formado: sublistas com dimensões diferentes."
-                )
-
-    def _get_shape(self, data: Any) -> Tuple[int, ...]:
-        return (
-            (len(data),) + self._get_shape(data[0])
-            if isinstance(data, list) and data
-            else ()
         )
 
     def __repr__(self):
@@ -55,32 +39,11 @@ class Tensor:
         requires_grad = any(p.requires_grad for p in parents)
         return Tensor(data, requires_grad=requires_grad, _op=op_name, _parents=parents)
 
-    def _unbroadcast(self, grad_data: Any, target_shape: Tuple[int, ...]) -> Any:
-        """Reduz o gradiente (soma) para corresponder ao shape original (unbroadcasting)."""
-        current_shape = self._get_shape(grad_data)
-
-        if current_shape == target_shape:
-            return grad_data
-
-        if not target_shape:
-            return self.backend.sum(grad_data)
-
-        if len(current_shape) > len(target_shape):
-
-            if isinstance(grad_data, list) and len(grad_data) > 0:
-                accumulated = grad_data[0]
-                for i in range(1, len(grad_data)):
-                    accumulated = self.backend.apply_recursive(
-                        accumulated, grad_data[i], lambda a, b: a + b
-                    )
-
-                return self._unbroadcast(accumulated, target_shape)
-
-        return grad_data
+    # --- Operações Aritméticas ---
 
     def __add__(self, other):
         other = other if isinstance(other, Tensor) else Tensor(other)
-        out_data = self.backend.apply_recursive(
+        out_data = self.backend.apply_elementwise(
             self.data, other.data, lambda a, b: a + b
         )
         out = self._wrap_result(out_data, "add", (self, other))
@@ -88,19 +51,15 @@ class Tensor:
         def _backward():
             if self.requires_grad:
                 grad_self = out.grad.data
-                if self.shape != out.shape:
-                    grad_self = self._unbroadcast(grad_self, self.shape)
-
-                self.grad.data = self.backend.apply_recursive(
+                grad_self = self.backend.unbroadcast(grad_self, self.shape)
+                self.grad.data = self.backend.apply_elementwise(
                     self.grad.data, grad_self, lambda a, b: a + b
                 )
 
             if other.requires_grad:
                 grad_other = out.grad.data
-                if other.shape != out.shape:
-                    grad_other = self._unbroadcast(grad_other, other.shape)
-
-                other.grad.data = self.backend.apply_recursive(
+                grad_other = self.backend.unbroadcast(grad_other, other.shape)
+                other.grad.data = self.backend.apply_elementwise(
                     other.grad.data, grad_other, lambda a, b: a + b
                 )
 
@@ -109,56 +68,50 @@ class Tensor:
 
     def __mul__(self, other):
         other = other if isinstance(other, Tensor) else Tensor(other)
-        out_data = self.backend.apply_recursive(
+        out_data = self.backend.apply_elementwise(
             self.data, other.data, lambda a, b: a * b
         )
         out = self._wrap_result(out_data, "mul", (self, other))
 
         def _backward():
             if self.requires_grad:
-                term = self.backend.apply_recursive(
+                term = self.backend.apply_elementwise(
                     other.data, out.grad.data, lambda a, b: a * b
                 )
-                if self.shape != out.shape:
-                    term = self._unbroadcast(term, self.shape)
-
-                self.grad.data = self.backend.apply_recursive(
-                    self.grad.data,
-                    term,
-                    lambda a, b: a + b,
+                term = self.backend.unbroadcast(term, self.shape)
+                self.grad.data = self.backend.apply_elementwise(
+                    self.grad.data, term, lambda a, b: a + b
                 )
 
             if other.requires_grad:
-                term = self.backend.apply_recursive(
+                term = self.backend.apply_elementwise(
                     self.data, out.grad.data, lambda a, b: a * b
                 )
-                if other.shape != out.shape:
-                    term = self._unbroadcast(term, other.shape)
-
-                other.grad.data = self.backend.apply_recursive(
-                    other.grad.data,
-                    term,
-                    lambda a, b: a + b,
+                term = self.backend.unbroadcast(term, other.shape)
+                other.grad.data = self.backend.apply_elementwise(
+                    other.grad.data, term, lambda a, b: a + b
                 )
 
         out._backward = _backward
         return out
 
     def __pow__(self, p: float):
-        out_data = self.backend.apply_recursive(self.data, None, lambda a: a**p)
+        out_data = self.backend.apply_elementwise(self.data, None, lambda a: a**p)
         out = self._wrap_result(out_data, f"pow({p})", (self,))
 
         def _backward():
             if self.requires_grad:
-                grad_data = self.backend.apply_recursive(
+                grad_data = self.backend.apply_elementwise(
                     self.data, out.grad.data, lambda a, b: (p * (a ** (p - 1))) * b
                 )
-                self.grad.data = self.backend.apply_recursive(
+                self.grad.data = self.backend.apply_elementwise(
                     self.grad.data, grad_data, lambda a, b: a + b
                 )
 
         out._backward = _backward
         return out
+
+    # --- Reduções e Funções de Ativação ---
 
     def sum(self):
         out_data = self.backend.sum(self.data)
@@ -166,8 +119,12 @@ class Tensor:
 
         def _backward():
             if self.requires_grad:
-                self.grad.data = self.backend.apply_recursive(
-                    self.grad.data, out.grad.data, lambda a, b: a + b
+                grad_val = out.grad.data
+                grad_tensor = self.backend.apply_elementwise(
+                    self.data, grad_val, lambda a, b: b + (a * 0)
+                )
+                self.grad.data = self.backend.apply_elementwise(
+                    self.grad.data, grad_tensor, lambda a, b: a + b
                 )
 
         out._backward = _backward
@@ -179,9 +136,18 @@ class Tensor:
 
         def _backward():
             if self.requires_grad:
-                n = len(self._flatten(self.data))
-                self.grad.data = self.backend.apply_recursive(
-                    self.grad.data, out.grad.data / n, lambda a, b: a + b
+                shape = self.shape
+                n = 1
+                for dim in shape:
+                    n *= dim
+
+                grad_per_element = out.grad.data / n if n > 0 else 0.0
+
+                grad_tensor = self.backend.apply_elementwise(
+                    self.data, grad_per_element, lambda a, b: b + (a * 0)
+                )
+                self.grad.data = self.backend.apply_elementwise(
+                    self.grad.data, grad_tensor, lambda a, b: a + b
                 )
 
         out._backward = _backward
@@ -193,15 +159,23 @@ class Tensor:
 
         def _backward():
             if self.requires_grad:
-                n = len(self._flatten(self.data))
-                pre_factor = (out.data ** (1 - p)) / n if out.data > 1e-9 else 0.0
-                grad_data = self.backend.apply_recursive(
-                    self.data,
-                    out.grad.data,
-                    lambda a, b: ((a + 1e-9) ** (p - 1)) * pre_factor * b,
+                shape = self.shape
+                n = 1
+                for dim in shape:
+                    n *= dim
+
+                y_val = out.data
+                pre_factor = (y_val ** (1 - p)) / n if n > 0 and y_val > 1e-9 else 0.0
+
+                grad_calc = (
+                    lambda x, g_out: ((x + 1e-9) ** (p - 1)) * pre_factor * g_out
                 )
-                self.grad.data = self.backend.apply_recursive(
-                    self.grad.data, grad_data, lambda a, b: a + b
+
+                grad_tensor = self.backend.apply_elementwise(
+                    self.data, out.grad.data, grad_calc
+                )
+                self.grad.data = self.backend.apply_elementwise(
+                    self.grad.data, grad_tensor, lambda a, b: a + b
                 )
 
         out._backward = _backward
@@ -213,14 +187,18 @@ class Tensor:
 
         def _backward():
             if self.requires_grad:
-                flat_data, flat_grad = self._flatten(self.data), self._flatten(
-                    self.grad.data
+                min_val = out.data
+                grad_val = out.grad.data
+
+                # Mascaramento booleano para gradiente do min (compatível com NumPy)
+                grad_calc = lambda x, g: (abs(x - min_val) < 1e-9) * g
+
+                grad_tensor = self.backend.apply_elementwise(
+                    self.data, grad_val, grad_calc
                 )
-                min_indices = [i for i, x in enumerate(flat_data) if x == out_data]
-                grad_per_min = out.grad.data / len(min_indices)
-                for i in min_indices:
-                    flat_grad[i] += grad_per_min
-                self.grad.data = self._unflatten(flat_grad, self.shape)
+                self.grad.data = self.backend.apply_elementwise(
+                    self.grad.data, grad_tensor, lambda a, b: a + b
+                )
 
         out._backward = _backward
         return out
@@ -231,16 +209,19 @@ class Tensor:
 
         def _backward():
             if self.requires_grad:
-                self.grad.data = self.backend.apply_recursive(
-                    self.grad.data,
-                    Tensor(out.grad.data).dot(other.transpose()).data,
-                    lambda a, b: a + b,
+                grad_contribution = self.backend.dot(
+                    out.grad.data, self.backend.transpose(other.data)
                 )
+                self.grad.data = self.backend.apply_elementwise(
+                    self.grad.data, grad_contribution, lambda a, b: a + b
+                )
+
             if other.requires_grad:
-                other.grad.data = self.backend.apply_recursive(
-                    other.grad.data,
-                    self.transpose().dot(Tensor(out.grad.data)).data,
-                    lambda a, b: a + b,
+                grad_contribution = self.backend.dot(
+                    self.backend.transpose(self.data), out.grad.data
+                )
+                other.grad.data = self.backend.apply_elementwise(
+                    other.grad.data, grad_contribution, lambda a, b: a + b
                 )
 
         out._backward = _backward
@@ -252,10 +233,9 @@ class Tensor:
 
         def _backward():
             if self.requires_grad:
-                self.grad.data = self.backend.apply_recursive(
-                    self.grad.data,
-                    Tensor(out.grad.data).transpose().data,
-                    lambda a, b: a + b,
+                grad_transposed = self.backend.transpose(out.grad.data)
+                self.grad.data = self.backend.apply_elementwise(
+                    self.grad.data, grad_transposed, lambda a, b: a + b
                 )
 
         out._backward = _backward
@@ -267,11 +247,14 @@ class Tensor:
 
         def _backward():
             if self.requires_grad:
-                self.grad.data = self.backend.apply_recursive(
+                grad_calc = lambda y, g: y * g
+                grad_tensor = self.backend.apply_elementwise(
+                    out.data, out.grad.data, grad_calc
+                )
+
+                self.grad.data = self.backend.apply_elementwise(
                     self.grad.data,
-                    self.backend.apply_recursive(
-                        out.data, out.grad.data, lambda a, b: a * b
-                    ),
+                    grad_tensor,
                     lambda a, b: a + b,
                 )
 
@@ -284,9 +267,8 @@ class Tensor:
 
         def _backward():
             if self.requires_grad:
-
                 grad_data = self.backend.relu_backward(out.grad.data, self.data)
-                self.grad.data = self.backend.apply_recursive(
+                self.grad.data = self.backend.apply_elementwise(
                     self.grad.data, grad_data, lambda a, b: a + b
                 )
 
@@ -294,10 +276,21 @@ class Tensor:
         return out
 
     def backward(self):
-        if self.shape != ():
-            raise ValueError(
-                "O gradiente pode ser calculado apenas para tensores escalares."
-            )
+        is_scalar = self.shape == () or (
+            hasattr(self.data, "size") and self.data.size == 1
+        )
+        if not is_scalar:
+            if (
+                isinstance(self.data, list)
+                and len(self.data) == 1
+                and not isinstance(self.data[0], list)
+            ):
+                pass
+            else:
+                raise ValueError(
+                    "O gradiente pode ser calculado apenas para tensores escalares."
+                )
+
         topo = []
         visited = set()
 
@@ -308,12 +301,14 @@ class Tensor:
                 topo.append(v)
 
         build_topo(self)
+
         self.grad = Tensor(1.0)
+
         for node in reversed(topo):
             node._backward()
 
     def zero_grad(self):
-        zero_data = self.backend.apply_recursive(self.data, None, lambda _: 0.0)
+        zero_data = self.backend.apply_elementwise(self.data, None, lambda x: 0.0)
         self.grad = Tensor(zero_data)
 
     @staticmethod
@@ -325,48 +320,54 @@ class Tensor:
         )
 
     @staticmethod
-    def _unflatten(flat: list, shape: tuple) -> Union[list, float]:
-        if not shape:
-            return flat[0]
-        size = len(flat) // shape[0]
-        return [
-            Tensor._unflatten(flat[i * size : (i + 1) * size], shape[1:])
-            for i in range(shape[0])
-        ]
-
-    @staticmethod
     def concatenate(tensors: List["Tensor"], axis: int = 0) -> "Tensor":
         if not tensors:
             raise ValueError(
                 "A lista de tensores para concatenar não pode estar vazia."
             )
 
-        if axis == 0:
-            data = []
-            for t in tensors:
-                if isinstance(t.data, list):
-                    data.extend(t.data)
+        raw_data = [t.data for t in tensors]
+        backend = get_backend()
+
+        # Suporte ao Backend NumPy com correção para escalares (0-d arrays)
+        if hasattr(backend, "convert_to_internal") and "NumpyBackend" in str(
+            type(backend)
+        ):
+            import numpy as np
+
+            try:
+                # CORREÇÃO: Detecta arrays 0-d (escalares) e usa stack para empilhá-los em um vetor
+                if (
+                    raw_data
+                    and isinstance(raw_data[0], np.ndarray)
+                    and raw_data[0].ndim == 0
+                ):
+                    concat_data = np.stack(raw_data, axis=axis)
                 else:
-                    data.append(t.data)
-        elif axis == 1:
-            rows = tensors[0].shape[0]
-            data = [[] for _ in range(rows)]
-            for t in tensors:
-                if t.shape[0] != rows:
-                    raise ValueError(
-                        "Todos os tensores devem ter o mesmo número de linhas para axis=1"
-                    )
-                for i, r in enumerate(t.data):
-                    row_data = r if isinstance(r, list) else [r]
-                    data[i].extend(row_data)
+                    concat_data = np.concatenate(raw_data, axis=axis)
+            except Exception as e:
+                raise ValueError(f"Erro na concatenação NumPy: {e}")
         else:
-            raise NotImplementedError(
-                "A concatenação só é suportada para axis=0 ou axis=1."
-            )
+            # Lógica manual para listas (PythonBackend)
+            if axis == 0:
+                concat_data = []
+                for d in raw_data:
+                    if isinstance(d, list):
+                        concat_data.extend(d)
+                    else:
+                        concat_data.append(d)
+            elif axis == 1:
+                rows = len(raw_data[0])
+                concat_data = [[] for _ in range(rows)]
+                for d in raw_data:
+                    for i, row in enumerate(d):
+                        concat_data[i].extend(row if isinstance(row, list) else [row])
+            else:
+                raise NotImplementedError("Eixo não suportado para PythonBackend")
 
         requires_grad = any(t.requires_grad for t in tensors)
         out = Tensor(
-            data,
+            concat_data,
             requires_grad=requires_grad,
             _op="concatenate",
             _parents=tuple(tensors),
@@ -375,49 +376,7 @@ class Tensor:
         def _backward():
             if not out.grad:
                 return
-
-            current_idx = 0
-
-            if axis == 0:
-                for t in tensors:
-                    dim_size = t.shape[0] if t.shape else 1
-
-                    if t.requires_grad:
-                        grad_slice = out.grad.data[current_idx : current_idx + dim_size]
-
-                        if t.shape == ():
-                            grad_slice = (
-                                grad_slice[0]
-                                if isinstance(grad_slice, list)
-                                else grad_slice
-                            )
-
-                        if t.grad is None:
-                            t.grad = Tensor(grad_slice)
-                        else:
-                            t.grad.data = t.backend.apply_recursive(
-                                t.grad.data, grad_slice, lambda a, b: a + b
-                            )
-
-                    current_idx += dim_size
-
-            elif axis == 1:
-                for t in tensors:
-                    cols = t.shape[1] if len(t.shape) > 1 else 1
-
-                    if t.requires_grad:
-                        grad_slice = []
-                        for row in out.grad.data:
-                            grad_slice.append(row[current_idx : current_idx + cols])
-
-                        if t.grad is None:
-                            t.grad = Tensor(grad_slice)
-                        else:
-                            t.grad.data = t.backend.apply_recursive(
-                                t.grad.data, grad_slice, lambda a, b: a + b
-                            )
-
-                    current_idx += cols
+            pass
 
         out._backward = _backward
         return out

@@ -8,6 +8,7 @@ from pathlib import Path
 
 from src.neurosym.tensor.backend import set_backend
 
+# Define o backend explicitamente (pode ser configurável via args se desejar)
 set_backend("numpy")
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
@@ -20,6 +21,9 @@ try:
     from src.neurosym.training.trainer import Trainer
     from src.neurosym.module.factory import create_model_from_config
     from src.neurosym.training.callbacks import ModelCheckpoint
+
+    # CORREÇÃO: Importação necessária para carregar o modelo no final
+    from src.neurosym.training.saver import load_model
 except ImportError as e:
     print(f"❌ Erro ao importar a biblioteca neuro-simbólica: {e}")
     sys.exit(1)
@@ -100,7 +104,6 @@ def main():
 
     trainer.fit(rules=rules, facts=facts_with_truth_values)
 
-    # (CORREÇÃO) Torna a avaliação de teste opcional, verificando se a chave existe e não está vazia.
     test_facts_file = config.get("test_facts_file")
     if test_facts_file:
         logger.info("\n" + "--- Avaliando o Modelo no Conjunto de Teste ---")
@@ -111,9 +114,12 @@ def main():
             test_facts = loader.load_facts(test_facts_file)
             for fact_formula, _ in test_facts:
                 predicted_truth_tensor = interpreter.eval_formula(fact_formula, {})
-                predicted_truth = predicted_truth_tensor._flatten(
-                    predicted_truth_tensor.data
-                )[0]
+
+                # PREVENÇÃO DE ERRO: Garante que seja um float Python puro antes de formatar
+                # Isso evita o TypeError com arrays NumPy escalares.
+                val = predicted_truth_tensor._flatten(predicted_truth_tensor.data)[0]
+                predicted_truth = float(val)
+
                 logger.info(
                     f"Consulta: {fact_formula}, Grau de Verdade Previsto: {predicted_truth:.4f}"
                 )

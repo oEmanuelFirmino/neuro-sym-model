@@ -1,4 +1,4 @@
-# examples/socrates/train.py
+# examples/fraud_detection/train.py
 
 import sys
 import yaml
@@ -8,6 +8,7 @@ from pathlib import Path
 
 from src.neurosym.tensor.backend import set_backend
 
+# Define o backend explicitamente
 set_backend("numpy")
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
@@ -25,8 +26,8 @@ except ImportError as e:
     print(f"❌ Erro ao importar a biblioteca neuro-simbólica: {e}")
     sys.exit(1)
 
-# Nome do logger alterado para ser mais genérico
-logger = logging.getLogger("ExampleClient")
+# Logger configurado
+logger = logging.getLogger("FraudDetectionClient")
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s | %(name)s | %(message)s",
@@ -36,24 +37,30 @@ logging.basicConfig(
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Script cliente para treinar um modelo neuro-simbólico."
+        description="Script para treinar o modelo de detecção de fraudes."
     )
+    # Ajustei o default para apontar para o config correto deste exemplo
     parser.add_argument(
         "--config",
         type=str,
-        default="examples/socrates/config.yaml",
+        default="examples/fraud_detection/config.yaml",
         help="Caminho para o arquivo YAML.",
     )
     args = parser.parse_args()
 
     logger.info("=" * 75)
-    logger.info("  🚀 INICIANDO CLIENTE DE TREINAMENTO 🚀")
+    logger.info("  🚀 INICIANDO DETECÇÃO DE FRAUDES 🚀")
     logger.info("=" * 75)
 
     config_path = PROJECT_ROOT / args.config
     logger.info(f"Carregando configuração de: {config_path}")
-    with open(config_path, "r") as f:
-        config = yaml.safe_load(f)
+
+    try:
+        with open(config_path, "r") as f:
+            config = yaml.safe_load(f)
+    except FileNotFoundError:
+        logger.error(f"Arquivo de configuração não encontrado: {config_path}")
+        sys.exit(1)
 
     data_path = PROJECT_ROOT / config["data_path"]
     loader = KnowledgeBaseLoader(data_path)
@@ -101,8 +108,8 @@ def main():
 
     trainer.fit(rules=rules, facts=facts_with_truth_values)
 
-    # (CORREÇÃO) Torna a avaliação de teste opcional, verificando se a chave existe e não está vazia.
     test_facts_file = config.get("test_facts_file")
+    # Verifica se a chave existe E se o arquivo existe (opcional, mas boa prática)
     if test_facts_file:
         logger.info("\n" + "--- Avaliando o Modelo no Conjunto de Teste ---")
         try:
@@ -110,11 +117,22 @@ def main():
             logger.info("Melhor modelo carregado para avaliação final.")
 
             test_facts = loader.load_facts(test_facts_file)
+            if not test_facts:
+                logger.warning(
+                    f"O arquivo {test_facts_file} está vazio ou não contem fatos válidos."
+                )
+
             for fact_formula, _ in test_facts:
                 predicted_truth_tensor = interpreter.eval_formula(fact_formula, {})
-                predicted_truth = predicted_truth_tensor._flatten(
+
+                # CORREÇÃO CRÍTICA AQUI:
+                # 1. Obtém o valor escalar do tensor (pode vir como numpy scalar)
+                val_scalar = predicted_truth_tensor._flatten(
                     predicted_truth_tensor.data
                 )[0]
+                # 2. Converte explicitamente para float nativo do Python
+                predicted_truth = float(val_scalar)
+
                 logger.info(
                     f"Consulta: {fact_formula}, Grau de Verdade Previsto: {predicted_truth:.4f}"
                 )
@@ -122,6 +140,8 @@ def main():
             logger.warning(
                 "Nenhum ficheiro de teste encontrado ou modelo salvo pelo checkpoint. Avaliação ignorada."
             )
+        except Exception as e:
+            logger.error(f"Erro durante a avaliação: {e}")
     else:
         logger.info(
             "\nNenhum 'test_facts_file' especificado na configuração. Avaliação final ignorada."

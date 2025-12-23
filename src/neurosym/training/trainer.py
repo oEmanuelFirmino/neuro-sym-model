@@ -68,8 +68,14 @@ class Trainer:
             loss.backward()
             self.optimizer.step()
 
-            avg_satisfaction = (total_satisfaction.data / len(rules)) if rules else 1.0
-            logs["loss"] = loss.data
+            # CORREÇÃO: Cast explícito para float.
+            # Garante compatibilidade com o logging e callbacks, seja o backend NumPy ou Python.
+            # O NumPy array scalar não formata corretamente com {:.4f} nativo do Python em algumas versões.
+            avg_satisfaction = (
+                (float(total_satisfaction.data) / len(rules)) if rules else 1.0
+            )
+
+            logs["loss"] = float(loss.data)
             logs["satisfaction"] = avg_satisfaction
 
             if (epoch + 1) % 10 == 0 or epoch == self.epochs - 1:

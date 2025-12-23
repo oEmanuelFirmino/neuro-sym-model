@@ -18,13 +18,17 @@ class KnowledgeBaseLoader:
             for line in f:
                 line = line.split("#")[0].strip()
                 if line:
+                    # NORMALIZAÇÃO: Converte chaves do domínio para lowercase
+                    normalized_line = line.lower()
                     embedding = [
                         [
-                            (hash(line + str(i)) % 1000 / 1000.0)
+                            (hash(normalized_line + str(i)) % 1000 / 1000.0)
                             for i in range(embedding_dim)
                         ]
                     ]
-                    grounding_env[line] = Tensor(embedding, requires_grad=True)
+                    grounding_env[normalized_line] = Tensor(
+                        embedding, requires_grad=True
+                    )
         return grounding_env
 
     def load_facts(self, facts_file: str) -> List[Tuple[Formula, float]]:
@@ -38,7 +42,8 @@ class KnowledgeBaseLoader:
                 if len(parts) < 2:
                     continue
                 pred_name = parts[0]
-                constants = [Constant(name) for name in parts[1:-1]]
+                # NORMALIZAÇÃO: Garante que constantes nos fatos sejam lowercase
+                constants = [Constant(name.lower()) for name in parts[1:-1]]
                 truth_value = float(parts[-1])
                 facts.append((Atom(pred_name, constants), truth_value))
         return facts
@@ -75,7 +80,13 @@ class KnowledgeBaseLoader:
                 nested_formula = Forall(variables[var_name], nested_formula)
             return nested_formula
         else:
-            raise ValueError(f"Formato de regra inválido ou não suportado: {rule_str}")
+            # Tratamento para regras sem quantificador explícito (Fatos ou regras proposicionais)
+            try:
+                return self._parse_formula_str(rule_str, {})
+            except Exception:
+                raise ValueError(
+                    f"Formato de regra inválido ou não suportado: {rule_str}"
+                )
 
     def _parse_formula_str(
         self, formula_str: str, variables: Dict[str, Variable]
@@ -85,8 +96,21 @@ class KnowledgeBaseLoader:
         if formula_str.startswith("¬"):
             return Not(self._parse_formula_str(formula_str[1:], variables))
 
+        # Lógica de remoção de parênteses externos com verificação de balanceamento
         if formula_str.startswith("(") and formula_str.endswith(")"):
-            formula_str = formula_str[1:-1].strip()
+            depth = 0
+            balanced_inside = True
+            for i, char in enumerate(formula_str):
+                if char == "(":
+                    depth += 1
+                elif char == ")":
+                    depth -= 1
+                if depth == 0 and i < len(formula_str) - 1:
+                    balanced_inside = False
+                    break
+
+            if balanced_inside:
+                formula_str = formula_str[1:-1].strip()
 
         if "→" in formula_str:
             antecedent_str, consequent_str = formula_str.split("→", 1)
@@ -113,7 +137,17 @@ class KnowledgeBaseLoader:
         if atom_match:
             pred_name, terms_str = atom_match.groups()
             term_names = [t.strip() for t in terms_str.split(",")]
-            terms = [variables.get(name, Constant(name)) for name in term_names]
+
+            terms = []
+            for name in term_names:
+                # Verifica se é uma variável ligada ao quantificador
+                if name in variables:
+                    terms.append(variables[name])
+                else:
+                    # NORMALIZAÇÃO: Se não é variável, é constante -> Lowercase
+                    # Isso resolve o problema de 'Socrates' vs 'socrates'
+                    terms.append(Constant(name.lower()))
+
             return Atom(pred_name, terms)
 
         raise ValueError(f"Não foi possível interpretar a sub-fórmula: {formula_str}")

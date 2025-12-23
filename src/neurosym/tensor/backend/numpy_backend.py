@@ -1,61 +1,82 @@
 import numpy as np
-from typing import Any, Callable
+from typing import Any, Callable, Tuple
 from .base import TensorBackend
 
 
 class NumpyBackend(TensorBackend):
-    def _to_numpy(self, data: Any) -> np.ndarray:
+    def convert_to_internal(self, data: Any) -> np.ndarray:
+        # Garante que seja array float64. Se já for, o overhead é mínimo.
+        # copy=False evita duplicar memória se o array já for do tipo correto.
+        if isinstance(data, np.ndarray):
+            return data.astype(np.float64, copy=False)
         return np.array(data, dtype=np.float64)
 
-    def _to_list(self, data: Any) -> Any:
-        if isinstance(data, np.ndarray):
-            return data.tolist()
-        return data.item() if hasattr(data, "item") else data
+    def get_shape(self, data: np.ndarray) -> Tuple[int, ...]:
+        return data.shape
 
-    def apply_recursive(self, a: Any, b: Any, op: Callable) -> Any:
-        a_np = self._to_numpy(a)
-        if b is not None:
-            result = op(a_np, self._to_numpy(b))
-        else:
-            try:
-                if op(None) == 0.0:
-                    result = np.zeros_like(a_np)
-                else:
-                    result = np.vectorize(op)(a_np)
-            except TypeError:
-                result = np.vectorize(op)(a_np)
-        return self._to_list(result)
+    def apply_elementwise(self, a: Any, b: Any, op: Callable) -> np.ndarray:
+        # NumPy lida nativamente com 'op(array, array)' via operator overloading
+        # e broadcasting automático.
+        if b is None:
+            return op(a)
+        return op(a, b)
 
-    def exp(self, data: Any) -> Any:
-        return self._to_list(np.exp(self._to_numpy(data)))
+    def unbroadcast(
+        self, data: np.ndarray, target_shape: Tuple[int, ...]
+    ) -> np.ndarray:
+        """
+        Realiza a soma nas dimensões extras ou expandidas criadas pelo broadcasting.
+        Isso substitui o loop recursivo lento da implementação anterior.
+        """
+        if data.shape == target_shape:
+            return data
 
-    def relu(self, data: Any) -> Any:
-        return self._to_list(np.maximum(0, self._to_numpy(data)))
+        ndims_added = len(data.shape) - len(target_shape)
 
-    def relu_backward(self, grad_data: Any, input_data: Any) -> Any:
-        """(CORREÇÃO) Usa np.where para a derivada vetorial da ReLU."""
-        grad_np = self._to_numpy(grad_data)
-        input_np = self._to_numpy(input_data)
-        return self._to_list(np.where(input_np > 0, grad_np, 0))
+        # 1. Soma nas dimensões extras à esquerda (ex: broadcasting de escalar para matriz)
+        for _ in range(ndims_added):
+            data = data.sum(axis=0)
 
-    def dot(self, a: Any, b: Any) -> Any:
-        return self._to_list(np.dot(self._to_numpy(a), self._to_numpy(b)))
+        # 2. Se as dimensões existem mas têm tamanho 1 no target (broadcast), soma nelas.
+        # Ex: target=(3, 1), current=(3, 5) -> soma no axis 1 para voltar a ter dimensão 1.
+        for i, (dim_in, dim_out) in enumerate(zip(data.shape, target_shape)):
+            if dim_in > dim_out:
+                data = data.sum(axis=i, keepdims=True)
 
-    def transpose(self, data: Any) -> Any:
-        return self._to_list(self._to_numpy(data).T)
+        return data
+
+    def exp(self, data: Any) -> np.ndarray:
+        return np.exp(data)
+
+    def relu(self, data: Any) -> np.ndarray:
+        return np.maximum(0, data)
+
+    def relu_backward(self, grad_data: Any, input_data: Any) -> np.ndarray:
+        # Operação vetorizada pura, sem loops.
+        # Onde input > 0, passa o gradiente; caso contrário, zera.
+        return np.where(input_data > 0, grad_data, 0.0)
+
+    def dot(self, a: Any, b: Any) -> np.ndarray:
+        return np.dot(a, b)
+
+    def transpose(self, data: Any) -> np.ndarray:
+        return data.T
 
     def sum(self, data: Any) -> float:
-        return float(np.sum(self._to_numpy(data)))
+        return float(np.sum(data))
 
     def mean(self, data: Any) -> float:
-        return float(np.mean(self._to_numpy(data)))
+        return float(np.mean(data))
 
     def p_mean(self, data: Any, p: float) -> float:
-        array = self._to_numpy(data)
-        if array.size == 0:
+        # Implementação numericamente mais estável
+        if data.size == 0:
             return 0.0
-        return float(np.mean((array + 1e-9) ** p) ** (1 / p))
+        # Adiciona 1e-9 para evitar log(0) ou divisões instáveis durante o backward
+        val = np.mean((data + 1e-9) ** p) ** (1 / p)
+        return float(val)
 
     def min(self, data: Any) -> float:
-        array = self._to_numpy(data)
-        return float(np.min(array)) if array.size > 0 else float("inf")
+        if data.size == 0:
+            return float("inf")
+        return float(np.min(data))

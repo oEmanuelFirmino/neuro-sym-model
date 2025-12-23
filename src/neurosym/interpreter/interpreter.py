@@ -94,6 +94,8 @@ class Interpreter:
 
         elif isinstance(formula, Forall):
             truth_values = []
+            # Otimização: Se o domínio for muito grande, aqui seria o ponto de
+            # implementar Stochastic Gradient Descent (amostragem do domínio).
             for const_name in self.domain:
                 temp_env = current_env.copy()
                 temp_env[formula.variable.name] = self.grounding_env[const_name]
@@ -113,8 +115,20 @@ class Interpreter:
 
     def _eval_term(self, term: Term, current_env: GroundingEnv) -> Tensor:
         if isinstance(term, Constant):
+            # MELHORIA: Validação explícita de existência da constante
+            if term.name not in self.grounding_env:
+                available = list(self.grounding_env.keys())[
+                    :5
+                ]  # Mostra alguns exemplos
+                raise ValueError(
+                    f"Constante desconhecida no domínio: '{term.name}'. "
+                    f"Verifique a capitalização (Case Sensitivity). "
+                    f"Disponíveis (exemplo): {available}..."
+                )
             return self.grounding_env[term.name]
         elif isinstance(term, Variable):
+            if term.name not in current_env:
+                raise ValueError(f"Variável não ligada encontrada: '{term.name}'")
             return current_env[term.name]
         else:
             raise TypeError(f"Tipo de termo desconhecido: {type(term).__name__}")

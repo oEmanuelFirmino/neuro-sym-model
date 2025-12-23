@@ -41,6 +41,11 @@ def main():
     )
     args = parser.parse_args()
 
+    # --- CORREÇÃO: Padronização para Lowercase ---
+    # Garante que 'Socrates' vire 'socrates' para bater com o domínio.
+    args.query = args.query.lower()
+    # ---------------------------------------------
+
     config_path = PROJECT_ROOT / args.config
     try:
         with open(config_path, "r") as f:
@@ -90,6 +95,10 @@ def main():
 
     print(f"\n--- Avaliando a Consulta ---")
     result = interpreter.eval_formula(parsed_query, {})
+
+    # Compatibilidade com o novo Tensor/NumpyBackend
+    # Se result.data for escalar numpy, _flatten pode não ser necessário,
+    # mas mantemos a chamada para garantir compatibilidade com a implementação atual do Tensor.
     truth_value = result._flatten(result.data)[0]
 
     print(f"Fórmula: {parsed_query}")
