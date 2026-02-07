@@ -25,7 +25,6 @@ except ImportError as e:
     print(f"❌ Erro ao importar a biblioteca neuro-simbólica: {e}")
     sys.exit(1)
 
-# Nome do logger alterado para ser mais genérico
 logger = logging.getLogger("ExampleClient")
 logging.basicConfig(
     level=logging.INFO,
@@ -101,7 +100,6 @@ def main():
 
     trainer.fit(rules=rules, facts=facts_with_truth_values)
 
-    # (CORREÇÃO) Torna a avaliação de teste opcional, verificando se a chave existe e não está vazia.
     test_facts_file = config.get("test_facts_file")
     if test_facts_file:
         logger.info("\n" + "--- Avaliando o Modelo no Conjunto de Teste ---")
