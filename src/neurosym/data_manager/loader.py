@@ -3,7 +3,6 @@ import re
 from pathlib import Path
 from typing import List, Dict, Tuple
 
-# As importações agora são relativas ao pacote 'src'
 from ..tensor import Tensor
 from ..logic import Formula, Atom, Forall, Variable, Constant, Implies, And, Or, Not
 
