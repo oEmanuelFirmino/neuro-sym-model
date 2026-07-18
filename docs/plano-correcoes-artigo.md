@@ -24,21 +24,24 @@ O repositório hoje só tem dois exemplos de brinquedo (`examples/socrates`,
 `Tensor` com autodiff reverso, backends Python/NumPy, `Interpreter` com Product
 T-norm, `Trainer` com SGD puro, e um `explainer.py` que só faz top-k por gradiente.
 
-Faltam, comparado ao que o artigo descreve:
+Estado no início do plano (2026-07-18), comparado ao que o artigo descreve. Esta
+tabela é o snapshot original — o estado atual (atualizado a cada fase) fica nas
+seções de cada fase abaixo; a coluna "Precisa existir" permanece como referência
+do alvo.
 
-| Área | Existe hoje | Precisa existir |
+| Área | Existia no início | Precisa existir |
 |---|---|---|
-| Regularização L1 estrutural | ❌ não implementada no `Trainer`/loss | ✅ termo `γ‖W‖₁` no funcional |
-| Peso `λ` da perda semântica | ❌ satisfação de regra entra com peso 1 fixo | ✅ hiperparâmetro `λ` configurável |
-| Otimizador AdamW | ❌ só existe `SGD` | ✅ AdamW com weight decay |
-| Domínio de Adição Modular | ❌ não existe | ✅ dataset, grounding, axiomas |
-| Split treino/val/teste | ⚠️ loader suporta `test_facts_file`, mas exemplos atuais não usam holdout real | ✅ split 3-vias genuíno |
-| Métrica T_g (tempo p/ generalização) | ❌ não implementada | ✅ com robustez a flutuações |
-| Baselines (Semantic Loss, LTN, DeepProbLog, MLP puro) | ⚠️ só Product T-norm existe; Łukasiewicz/Gödel não implementados | ✅ 4 baselines comparáveis |
-| Runner multi-seed (10 execuções) | ❌ não existe | ✅ harness com seeds fixas + agregação |
-| Sparsity comensurável entre arquiteturas | ❌ | ✅ métrica normalizada única |
-| Explicabilidade quantitativa (fidelidade, deletion/insertion) | ⚠️ só heatmap anedótico | ✅ métricas sobre N consultas |
-| Segundo domínio experimental | ❌ | ✅ tarefa relacional ou variante ruidosa |
+| Regularização L1 estrutural | ❌ não implementada no `Trainer`/loss | ✅ termo `γ‖W‖₁` no funcional — **feito (Fase 2)** |
+| Peso `λ` da perda semântica | ❌ satisfação de regra entra com peso 1 fixo | ✅ hiperparâmetro `λ` configurável — **feito (Fase 2)** |
+| Otimizador AdamW | ❌ só existe `SGD` | ✅ AdamW com weight decay — **feito (Fase 2)** |
+| Domínio de Adição Modular | ❌ não existe | ✅ dataset, grounding, axiomas — **feito (Fase 3)** |
+| Split treino/val/teste | ⚠️ loader suporta `test_facts_file`, mas exemplos atuais não usam holdout real | ✅ split 3-vias genuíno — **feito (Fase 3)** |
+| Métrica T_g (tempo p/ generalização) | ❌ não implementada | ✅ com robustez a flutuações — **feito (Fase 2)** |
+| Baselines (Semantic Loss, LTN, DeepProbLog, MLP puro) | ⚠️ só Product T-norm existe; Łukasiewicz/Gödel não implementados | ✅ 4 baselines comparáveis — **3/4 feitos (Fase 3): DLG, MLP, LTN; Semantic Loss e DeepProbLog adiados p/ Fase 3b** |
+| Runner multi-seed (10 execuções) | ❌ não existe | ✅ harness com seeds fixas + agregação — **feito (Fase 2)** |
+| Sparsity comensurável entre arquiteturas | ❌ | ✅ métrica normalizada única — pendente (Fase 5) |
+| Explicabilidade quantitativa (fidelidade, deletion/insertion) | ⚠️ só heatmap anedótico | ✅ métricas sobre N consultas — pendente (Fase 6) |
+| Segundo domínio experimental | ❌ | ✅ tarefa relacional ou variante ruidosa — pendente (Fase 4) |
 | Geração de figuras (vetorial, a partir de dados reais) | ❌ nenhum script de plot no repo | ✅ scripts reprodutíveis |
 
 ---
@@ -153,34 +156,107 @@ confiável.
 
 ---
 
-## Fase 3 — Domínio de Adição Modular + Baselines (M2 parcial, M3)
+## Fase 3 — Domínio de Adição Modular + Baselines (M2 parcial, M3) ⚠️ parcialmente concluída (2026-07-18)
 
-1. **Dataset**: gerar as 9409 triplas `(a,b,c=(a+b) mod 97)`, split 30/… conforme
-   protocolo — mas revisar já a decisão dos 30% treino / 70% "validação" à luz do
-   item m1 (Fase 1.7).
-2. **Axiomas** como `Formula` (`Forall` + `Implies`/`And` já existentes em
-   `logic/logic.py`): comutatividade `Add(a,b,c) → Add(b,a,c)` e identidade
-   `Add(a,0,a)`.
-3. **Baselines**, cada um com protocolo de tuning documentado e curvas de
-   convergência salvas (exigência explícita de M3):
-   - **MLP puro** (sem lógica) — o valor atual do artigo (14,2%) é seu próprio
-     placeholder, não um resultado real; ao rodar de verdade, orçar épocas e weight
-     decay suficientes para não ficar com um baseline artificialmente fraco — isso
-     é literalmente o que o parecer aponta como suspeito.
-   - **Semantic Loss** (penalização via WMC) — versão simplificada: usar a
-     satisfação booleana agregada como penalidade estática (sem DAG dinâmico, sem
-     L1), para isolar o que é "DAG + L1" de "só ter uma perda simbólica".
-   - **LTN** (Łukasiewicz + p-mean) — `fuzzy_operators.py` só tem Product T-norm
-     hoje; precisa adicionar `lukasiewicz_tnorm`/`_tconorm`/`_implication`
-     (`max(0, a+b-1)` etc.) ao `OPERATOR_MAP`. O agregador `p_mean` já existe em
-     `interpreter.py`.
-   - **DeepProbLog** (nAD + WMC) — o mais custoso de reproduzir fielmente; avaliar
-     escopo reduzido (aproximação com compilação probabilística simplificada) e
-     documentar claramente as simplificações assumidas, já que o parecer só exige
-     "protocolo descrito + reprodutibilidade", não paridade total com a
-     implementação original.
-4. **Liberar código e dados** (M3-iii) — garantir que o repo público reproduz os
-   números do artigo com um comando (`README` com instruções, configs versionadas).
+1. ✅ **Dataset + split** — `experiments/modular_addition/dataset.py`. Gera as p²
+   triplas `(a,b,(a+b) mod p)` e particiona em **treino/validação/teste
+   genuinamente separados** (resolve o item m1: o artigo original usa 30% treino /
+   70% "validação" com seleção de modelo no mesmo conjunto, sem holdout real). A
+   fração de treino pequena (30% por padrão) é preservada — é o que induz o efeito
+   de grokking — mas o restante (70%) agora é dividido em validação (acompanha a
+   curva/T_g durante o treino) e teste (nunca visto até a avaliação final), metade
+   cada por padrão. Cada par `(a,b)` gera 1 fato positivo (`c` correto) + N fatos
+   negativos (`c` incorreto amostrado) para que a acurácia não seja "gamed" por um
+   preditor trivial que sempre responde verdadeiro. Embeddings gerados via
+   `random.uniform` seedado (`build_grounding_env`), não o `hash()` não-determinístico
+   do `KnowledgeBaseLoader` (fecha o gap sinalizado ao final da Fase 2).
+2. ✅ **Axiomas** — `experiments/modular_addition/axioms.py`: comutatividade
+   `Add(a,b,c) → Add(b,a,c)` e identidade `Add(a,0,a)`. Implementados como
+   instâncias *grounded* por par de treino, não via `Forall` sobre todo o
+   domínio — com p=97 um `Forall` de duas variáveis livres exigiria iterar 97²
+   combinações por avaliação, e o `Interpreter.eval_formula` atual não vetoriza
+   quantificadores (custo O(|domínio|) por variável, sequencial em Python).
+   Instanciar por exemplo de treino é a leitura mais direta do funcional
+   L_semantic do artigo (Seção 4.4) e o único jeito computacionalmente tratável
+   dado o interpretador atual.
+3. ✅ **Métrica de avaliação do domínio** — `experiments/modular_addition/evaluation.py`:
+   acurácia binária genérica (limiar 0.5) não bastava aqui, porque um preditor
+   trivial "sempre >= 0.5" acertaria todo fato positivo sem aprender a função. A
+   métrica correta para uma relação `Add(a,b,c)` é: dado `(a,b)`, o candidato `c`
+   com maior grau de verdade dentre todos os `p` candidatos é o `c` correto?
+   `Trainer` ganhou um parâmetro `accuracy_fn` (Fase 3) para plugar essa métrica
+   sem forkar a classe, e `val_eval_every` para não recalculá-la (cara: O(p) por
+   consulta) a cada época em domínios maiores.
+4. ✅ **3 de 4 baselines** — `experiments/modular_addition/run.py`, todos
+   compartilhando embeddings/MLP/split/época, só o mecanismo de inferência muda
+   (Tabela 1 do artigo):
+   - **DLG** (`make_dlg_build_fn`): Product T-norm (padrão do `Interpreter`) +
+     axiomas + regularização L1.
+   - **MLP puro** (`make_mlp_baseline_build_fn`): sem axiomas, sem L_semantic, sem
+     L1 — só `L_data`. Resolve a suspeita de M3 sobre o baseline de 14,2% do
+     artigo (que era um placeholder, não um resultado real): aqui ele roda com o
+     mesmo otimizador/orçamento de época que o DLG, então uma diferença de
+     desempenho reflete o mecanismo, não um baseline subtreinado.
+   - **LTN** (`make_ltn_baseline_build_fn`): troca Product por operadores de
+     Łukasiewicz (`lukasiewicz_and`/`_or`/`_implies`, novos em
+     `fuzzy_operators.py`), sem L1. **Simplificação registrada**: a agregação
+     p-mean da LTN original não é exercida, porque os axiomas são instâncias
+     grounded (não `Forall`) e `Trainer.fit` agrega `L_semantic` como média
+     aritmética simples — o diferencial testado aqui é o operador T-norm
+     (Product vs. Łukasiewicz), que é o ponto central da discussão de M4, não a
+     forma de agregação.
+5. ⏸ **Semantic Loss e DeepProbLog — adiados nesta passada.** Semantic Loss
+   (penalização via WMC) e DeepProbLog (nAD + compilação probabilística) não têm
+   um mapeamento direto para o `Interpreter` atual (que só sabe avaliar T-normas
+   fuzzy compostas via DAG dinâmico) sem trabalho adicional de design — diferente
+   de Łukasiewicz, que é só mais um `FuzzyOperator`. Ficam para uma Fase 3b
+   dedicada, com as simplificações explicitamente documentadas quando chegar lá
+   (o parecer exige "protocolo descrito + reprodutibilidade", não paridade total
+   com as implementações originais).
+6. ✅ **Piloto em pequena escala, executado** — `experiments/modular_addition/run_pilot.py`,
+   `p=13`, embeddings=8, hidden=24, 200 épocas, 2 seeds, os 3 baselines disponíveis
+   (DLG/MLP/LTN). Resultados brutos em `experiments/modular_addition/pilot_results/`.
+
+   | Arquitetura | val_accuracy final | test_accuracy | T_g (τ=0.95) | tempo (2 seeds) |
+   |---|---|---|---|---|
+   | DLG | 5.1% ± 0.0 | 5.0% ± 1.7 | nunca atingido | 255s |
+   | MLP puro | 7.6% ± 2.5 | 5.8% ± 4.2 | nunca atingido | 111s |
+   | LTN | 4.2% ± 0.8 | 5.0% ± 1.7 | nunca atingido | 236s |
+
+   **Leitura honesta**: nenhuma arquitetura generalizou dentro de 200 épocas —
+   acurácia ficou perto do acaso (1/13 ≈ 7.7%), então **isto não é evidência de
+   que o DLG generaliza mais rápido**, nem o contrário. O que o piloto confirma é
+   que o *pipeline* está correto: a curva de treino do DLG mostra exatamente o
+   comportamento esperado de um platô de memorização pré-grokking —
+   `loss` caindo de forma monótona (0.58→0.14) e a satisfação dos axiomas subindo
+   para 96%, enquanto `val_accuracy` fica estagnada e ruidosa (~5-15%) o tempo
+   todo — e `T_g` corretamente retorna `None` em vez de inventar um valor, porque
+   o limiar de 95% nunca foi atingido de forma sustentada. Também ficou visível
+   que `l1_penalty` do DLG *cresceu* ao longo do treino (263→304) apesar de
+   `gamma_l1=1e-4` — nesta escala/hiperparâmetros o termo L1 é fraco demais
+   perto de `L_data`; o `gamma_l1` precisa ser recalibrado quando formos atrás
+   de esparsidade de verdade.
+
+   200 épocas é pouco para observar a transição de grokking em si (a literatura
+   -- Power et al. 2022 -- tipicamente usa 10³-10⁵ passos); então o piloto
+   deliberadamente não tentou responder "o DLG groka mais rápido", só "o
+   encanamento funciona e mede o que diz medir". Essa pergunta científica fica
+   para uma execução bem mais longa (ver nota de desempenho e decisão pendente
+   abaixo).
+7. ⏸ **Pendente para fechar M3 por completo**: rodar a escala cheia (p=97, 10
+   seeds, todas as 4 arquiteturas) — job bem mais longo, ver nota de desempenho
+   abaixo — e documentar o protocolo de tuning de cada baseline + curvas de
+   convergência salvas (exigência explícita de M3). Liberar código e dados
+   (M3-iii) fica natural uma vez que a Fase 3b estiver completa.
+
+**Nota de desempenho para a Fase 3b:** `Trainer.fit` avalia a lista `rules`/`facts`
+inteira a cada época (sem mini-batching) e `AdamW.step` itera parâmetro-por-parâmetro
+em Python puro (sem vetorização). Em `p=13` (embeddings=8, hidden=24), ~1s/época;
+a escala do artigo (p=97, split 30/35/35 → milhares de fatos + eixo de avaliação
+O(p) por consulta) provavelmente exige horas por seed nesta implementação. Antes
+de rodar a escala cheia, vale considerar: (a) mini-batching real no `Trainer`, (b)
+vetorizar `AdamW.step` via o backend NumPy em vez de Python puro, e (c) reduzir a
+frequência/tamanho da avaliação O(p) em domínios grandes.
 
 ---
 
