@@ -170,3 +170,60 @@ class TestTrainer:
         accuracy = trainer.evaluate_accuracy(facts)
         assert accuracy == pytest.approx(0.5)
         formatter.logger.info("  ✅ evaluate_accuracy aplica o limiar binário corretamente.")
+
+    def test_custom_accuracy_fn_overrides_default(self, formatter):
+        grounding_env, predicate_map = _build_env()
+        interpreter = Interpreter(predicate_map, grounding_env)
+        all_params = list(grounding_env.values()) + predicate_map["P"].parameters()
+
+        calls = []
+
+        def custom_accuracy_fn(facts):
+            calls.append(list(facts))
+            return 0.42
+
+        trainer = Trainer(
+            interpreter, SGD(all_params, lr=0.0), epochs=1, accuracy_fn=custom_accuracy_fn
+        )
+        facts = [(Atom("P", [Constant("a")]), 1.0)]
+
+        result = trainer.evaluate_accuracy(facts)
+
+        assert result == pytest.approx(0.42)
+        assert len(calls) == 1
+        formatter.logger.info("  ✅ accuracy_fn customizada substitui a lógica padrão.")
+
+    def test_val_eval_every_forward_fills_between_evaluations(self, formatter):
+        grounding_env, predicate_map = _build_env()
+        interpreter = Interpreter(predicate_map, grounding_env)
+        all_params = list(grounding_env.values()) + predicate_map["P"].parameters()
+
+        call_count = [0]
+
+        def counting_accuracy_fn(facts):
+            call_count[0] += 1
+            return float(call_count[0])
+
+        capture = LogCapture()
+        trainer = Trainer(
+            interpreter,
+            SGD(all_params, lr=0.0),
+            epochs=6,
+            accuracy_fn=counting_accuracy_fn,
+            val_eval_every=3,
+            callbacks=[capture],
+        )
+        facts = [(Atom("P", [Constant("a")]), 1.0)]
+        val_facts = [(Atom("P", [Constant("a")]), 1.0)]
+
+        trainer.fit(rules=[], facts=facts, val_facts=val_facts)
+
+        # epochs 0..5, val_eval_every=3 -> avaliação real nas épocas 0 e 3, e
+        # também na última época (5) por ser o fim do treino.
+        val_curve = [epoch["val_accuracy"] for epoch in capture.history]
+        assert val_curve == [1.0, 1.0, 1.0, 2.0, 2.0, 3.0]
+        assert call_count[0] == 3
+        formatter.logger.info(
+            "  ✅ val_eval_every reduz a frequência de avaliação e preenche "
+            "os logs entre avaliações com o último valor conhecido."
+        )

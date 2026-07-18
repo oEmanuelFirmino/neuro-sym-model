@@ -211,3 +211,6 @@ __marimo__/
 
 .claude/
 graphify*
+
+# Saídas de execuções de experimentos (regeneráveis via run_pilot.py etc.)
+experiments/**/pilot_results/

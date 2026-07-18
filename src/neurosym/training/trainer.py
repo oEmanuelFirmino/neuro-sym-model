@@ -1,6 +1,6 @@
 import sys
 import logging
-from typing import List, Tuple, Dict, Optional
+from typing import List, Tuple, Dict, Optional, Callable
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
@@ -22,12 +22,25 @@ class Trainer:
         lambda_semantic: float = 1.0,
         gamma_l1: float = 0.0,
         val_threshold: float = 0.5,
+        accuracy_fn: Optional[
+            Callable[[List[Tuple[Formula, float]]], Optional[float]]
+        ] = None,
+        val_eval_every: int = 1,
     ):
         """
         lambda_semantic e gamma_l1 correspondem aos pesos lambda e gamma do
         funcional L_total = L_data + lambda*L_semantic + gamma*||W||_1
         (artigo, Seção 4.4). gamma_l1=0.0 por padrão desativa a regularização
         estrutural, preservando o comportamento anterior por padrão.
+
+        accuracy_fn permite substituir a acurácia binária padrão (limiar 0.5)
+        por uma métrica específica do domínio -- por exemplo, no domínio de
+        Adição Modular a acurácia correta é "argmax_c Add(a,b,c) == c_correto",
+        não um limiar sobre um único fato. val_eval_every controla a cada
+        quantas épocas essa avaliação (potencialmente cara) é recalculada; nas
+        épocas puladas, o último valor calculado é repetido nos logs para que
+        o índice da curva de validação continue alinhado com o número real da
+        época (necessário para T_g).
         """
         self.interpreter = interpreter
         self.optimizer = optimizer
@@ -36,6 +49,9 @@ class Trainer:
         self.lambda_semantic = lambda_semantic
         self.gamma_l1 = gamma_l1
         self.val_threshold = val_threshold
+        self.accuracy_fn = accuracy_fn
+        self.val_eval_every = max(1, val_eval_every)
+        self._last_val_accuracy: Optional[float] = None
         self.logger = self._setup_logger()
 
         for cb in self.callbacks:
@@ -74,6 +90,9 @@ class Trainer:
         if not facts:
             return None
 
+        if self.accuracy_fn is not None:
+            return self.accuracy_fn(facts)
+
         threshold = self.val_threshold if threshold is None else threshold
         correct = 0
         for formula, target in facts:
@@ -99,7 +118,13 @@ class Trainer:
 
             self.optimizer.zero_grad()
 
-            rule_truth_values = [self.interpreter.eval_formula(r, {}) for r in rules]
+            # .sum() reduz para escalar: fórmulas sem Forall (ex.: axiomas
+            # grounded por exemplo, como no domínio de Adição Modular) avaliam
+            # para um tensor de shape (1,1), não (); Forall já reduz via
+            # min()/mean()/p_mean(), então .sum() aqui é um no-op nesse caso.
+            rule_truth_values = [
+                self.interpreter.eval_formula(r, {}).sum() for r in rules
+            ]
             fact_losses = [
                 (self.interpreter.eval_formula(f, {}).sum() - Tensor(t)) ** 2
                 for f, t in facts
@@ -138,7 +163,10 @@ class Trainer:
             logs["satisfaction"] = avg_satisfaction.data
 
             if val_facts is not None:
-                logs["val_accuracy"] = self.evaluate_accuracy(val_facts)
+                is_last_epoch = epoch == self.epochs - 1
+                if epoch % self.val_eval_every == 0 or is_last_epoch:
+                    self._last_val_accuracy = self.evaluate_accuracy(val_facts)
+                logs["val_accuracy"] = self._last_val_accuracy
 
             if (epoch + 1) % 10 == 0 or epoch == self.epochs - 1:
                 val_msg = (
