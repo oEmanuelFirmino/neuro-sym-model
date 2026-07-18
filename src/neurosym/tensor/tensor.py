@@ -1,3 +1,4 @@
+import math
 from typing import Any, Tuple, Union, Iterable, Optional, List
 from src.neurosym.tensor.backend import get_backend
 
@@ -292,6 +293,22 @@ class Tensor:
                 )
                 self.grad.data = self.backend.apply_recursive(
                     self.grad.data, sign_data, lambda a, b: a + b
+                )
+
+        out._backward = _backward
+        return out
+
+    def log(self):
+        out_data = self.backend.apply_recursive(self.data, None, lambda a: math.log(a))
+        out = self._wrap_result(out_data, "log", (self,))
+
+        def _backward():
+            if self.requires_grad:
+                grad_data = self.backend.apply_recursive(
+                    self.data, out.grad.data, lambda a, b: b / a
+                )
+                self.grad.data = self.backend.apply_recursive(
+                    self.grad.data, grad_data, lambda a, b: a + b
                 )
 
         out._backward = _backward

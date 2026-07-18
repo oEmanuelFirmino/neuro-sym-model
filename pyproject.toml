@@ -23,6 +23,7 @@ classifiers = [
 dependencies = [
     "pyyaml>=6.0.2",
     "numpy>=1.26.0",
+    "matplotlib>=3.11.1",
 ]
 
 [project.optional-dependencies]
