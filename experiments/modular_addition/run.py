@@ -57,6 +57,7 @@ def _base_experiment(
     use_axioms: bool,
     lambda_semantic: float,
     gamma_l1: float,
+    weight_decay: float,
 ):
     data = generate_split(
         p,
@@ -78,7 +79,7 @@ def _base_experiment(
     )
 
     all_params = list(grounding_env.values()) + predicate_map["Add"].parameters()
-    optimizer = AdamW(all_params, lr=lr)
+    optimizer = AdamW(all_params, lr=lr, weight_decay=weight_decay)
     accuracy_fn = make_argmax_accuracy_fn(interpreter, p)
 
     trainer = Trainer(
@@ -113,6 +114,7 @@ def make_dlg_build_fn(
     val_eval_every: int = 1,
     lambda_semantic: float = 1.0,
     gamma_l1: float = 1e-4,
+    weight_decay: float = 1e-2,
 ):
     def build_fn(seed: int) -> ExperimentSpec:
         return _base_experiment(
@@ -130,6 +132,7 @@ def make_dlg_build_fn(
             use_axioms=True,
             lambda_semantic=lambda_semantic,
             gamma_l1=gamma_l1,
+            weight_decay=weight_decay,
         )
 
     return build_fn
@@ -145,6 +148,7 @@ def make_mlp_baseline_build_fn(
     val_frac: float = 0.35,
     negatives_per_positive: int = 1,
     val_eval_every: int = 1,
+    weight_decay: float = 1e-2,
 ):
     def build_fn(seed: int) -> ExperimentSpec:
         return _base_experiment(
@@ -162,6 +166,7 @@ def make_mlp_baseline_build_fn(
             use_axioms=False,  # sem L_semantic
             lambda_semantic=0.0,
             gamma_l1=0.0,  # sem L1
+            weight_decay=weight_decay,
         )
 
     return build_fn
@@ -178,6 +183,7 @@ def make_ltn_baseline_build_fn(
     negatives_per_positive: int = 1,
     val_eval_every: int = 1,
     lambda_semantic: float = 1.0,
+    weight_decay: float = 1e-2,
 ):
     lukasiewicz_operators = {
         "and": "lukasiewicz_and",
@@ -201,6 +207,7 @@ def make_ltn_baseline_build_fn(
             use_axioms=True,
             lambda_semantic=lambda_semantic,
             gamma_l1=0.0,  # sem esparsidade estrutural
+            weight_decay=weight_decay,
         )
 
     return build_fn

@@ -75,6 +75,21 @@ class TestBuildFns:
 
         formatter.logger.info("  ✅ baseline LTN usa Lukasiewicz e não usa L1.")
 
+    def test_weight_decay_propagates_to_optimizer(self, formatter):
+        for factory in (
+            make_dlg_build_fn,
+            make_mlp_baseline_build_fn,
+            make_ltn_baseline_build_fn,
+        ):
+            spec = factory(**TINY_KWARGS, weight_decay=0.25)(0)
+            assert spec.trainer.optimizer.weight_decay == pytest.approx(0.25)
+
+        # default preservado quando não informado
+        spec = make_dlg_build_fn(**TINY_KWARGS)(0)
+        assert spec.trainer.optimizer.weight_decay == pytest.approx(1e-2)
+
+        formatter.logger.info("  ✅ weight_decay chega ao AdamW em todas as fábricas.")
+
     def test_all_three_run_single_seed_end_to_end(self, formatter):
         for name, factory in (
             ("dlg", make_dlg_build_fn),

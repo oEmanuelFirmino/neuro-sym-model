@@ -289,6 +289,47 @@ confiável.
    confirmar que a transição de grokking é alcançável neste framework para
    *algum* ponto do espaço de configuração. Caso contrário corre-se o risco de
    gastar um job de várias horas em p=97 só para reproduzir o mesmo platô.
+
+   **Sweep de hiperparâmetros executado (2026-07-18, `run_sweep.py`,
+   resultados em `sweep_results/`)** — DLG apenas, p=13, 1500 épocas, seed 0,
+   5 configurações cobrindo as hipóteses 1-3:
+
+   | Config | val final | val pico | teste | T_g |
+   |---|---|---|---|---|
+   | wd=0.05 (8/24) | 5.1% | 15.3% | 8.3% | nunca |
+   | wd=0.1 (8/24) | 5.1% | 15.3% | 6.7% | nunca |
+   | wd=0.3 (8/24) | 6.8% | 15.3% | 5.0% | nunca |
+   | wd=0.1, capacidade 16/64 | 8.5% | 15.3% | 11.7% | nunca |
+   | wd=0.1, 3 negativos/positivo | 13.6% | 15.3% | 3.3% | nunca |
+
+   **Nenhuma configuração rompeu o platô.** Diagnóstico pelas curvas:
+   - O weight decay *está* agindo (a `l1_penalty` da config 16/64 despenca de
+     1084→234 ao longo do treino — os pesos encolhem bastante), e ainda assim
+     a memorização persiste com validação no nível do acaso. Ou seja, a
+     hipótese "wd fraco demais" foi testada de verdade e **refutada** neste
+     domínio/formulação (até 30x o valor original).
+   - Capacidade maior e mais negativos também não mudam o quadro (com 3
+     negativos o modelo nem memoriza completamente: `l_data` estaciona em
+     ~0.195, sugerindo subajuste dentro do orçamento).
+   - O "val pico" idêntico (15.3% = 9/59 acertos) em todas as configs é
+     granularidade da métrica com 59 consultas de validação, não um sinal.
+
+   **Conclusão**: hiperparâmetros, capacidade e densidade de negativos não
+   destravam grokking nesta formulação. A hipótese remanescente — e agora a
+   principal suspeita — é a **hipótese 4: a própria formulação relacional**.
+   No setup clássico de grokking (Power et al.), o modelo prevê `c` por
+   classificação softmax entre p classes com cross-entropy, o que força
+   estrutura compartilhada entre todos os candidatos a cada exemplo. Aqui, o
+   predicado avalia cada tripla `Add(a,b,c)` isoladamente com MSE, e o treino
+   só mostra 2-4 dos 13 candidatos por par — sinal muito mais esparso, e a
+   literatura já documenta que trocar cross-entropy por MSE altera (e pode
+   suprimir) a dinâmica de grokking. Isso tem implicação metodológica direta
+   para o artigo: se a formulação relacional do DLG não groka nem em p=13,
+   as alegações do artigo sobre aceleração de grokking precisam ser
+   re-avaliadas ou a formulação experimental precisa mudar (por exemplo,
+   negativos completos p-1 por par, aproximando o setup de classificação, ou
+   uma cabeça softmax explícita). **Próxima decisão a tomar com o autor antes
+   de gastar mais horas de computação.**
 7. ⏸ **Pendente para fechar M3 por completo**: rodar a escala cheia (p=97, 10
    seeds, todas as 4 arquiteturas) — job bem mais longo, ver nota de desempenho
    abaixo — e documentar o protocolo de tuning de cada baseline + curvas de
