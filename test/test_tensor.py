@@ -176,6 +176,28 @@ class TestTensorBackprop:
 
         assert b.grad._flatten(b.grad.data) == pytest.approx([2.0, 2.0])
 
+    def test_abs(self, formatter):
+        formatter.print_section_header("Valor Absoluto com Backpropagation")
+
+        a = Tensor([[-2.0, 3.0, 0.0]], requires_grad=True)
+        formatter.print_tensor_info("a", a, "Tensor A")
+
+        b = a.abs()
+        loss = b.sum()
+
+        formatter.print_operation_result("b = a.abs()", b)
+
+        assert b._flatten(b.data) == pytest.approx([2.0, 3.0, 0.0])
+
+        loss.backward()
+
+        formatter.print_backward_info("a", a)
+
+        flat_grad = a.grad._flatten(a.grad.data)
+        assert flat_grad[0] == pytest.approx(-1.0)
+        assert flat_grad[1] == pytest.approx(1.0)
+        assert flat_grad[2] == pytest.approx(0.0, abs=1e-6)
+
     def test_complex_chain(self, formatter):
         formatter.print_section_header("Cadeia Complexa (Linear Layer)")
 

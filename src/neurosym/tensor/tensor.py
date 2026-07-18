@@ -278,6 +278,25 @@ class Tensor:
         out._backward = _backward
         return out
 
+    def abs(self):
+        out_data = self.backend.apply_recursive(self.data, None, lambda a: abs(a))
+        out = self._wrap_result(out_data, "abs", (self,))
+
+        def _backward():
+            if self.requires_grad:
+                # sign(a) via a / (|a| + eps) so the op stays branch-free and works
+                # elementwise on both the Python and NumPy backends (no ambiguous
+                # truth-value checks on array operands).
+                sign_data = self.backend.apply_recursive(
+                    self.data, out.grad.data, lambda a, b: (a / (abs(a) + 1e-12)) * b
+                )
+                self.grad.data = self.backend.apply_recursive(
+                    self.grad.data, sign_data, lambda a, b: a + b
+                )
+
+        out._backward = _backward
+        return out
+
     def relu(self):
         out_data = self.backend.relu(self.data)
         out = self._wrap_result(out_data, "ReLU", (self,))

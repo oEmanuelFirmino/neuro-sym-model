@@ -4,7 +4,7 @@ import pytest
 
 try:
     from src.neurosym.tensor.tensor import Tensor
-    from src.neurosym.training.optimizer import SGD
+    from src.neurosym.training.optimizer import SGD, AdamW
 except ImportError:
     pytest.fail(
         "❌ Erro ao importar um ou mais módulos necessários para o teste do otimizador.",
@@ -135,3 +135,70 @@ class TestOptimizer:
             ), f"Gradiente do parâmetro {i+1} não foi zerado completamente: {flat_grad}"
 
         formatter.logger.info("  ✅ Zeragem de gradientes verificada com sucesso.")
+
+
+@pytest.fixture
+def adamw_setup(formatter):
+    formatter.print_section("Configuração Inicial (Fixture AdamW)")
+
+    params = [Tensor(1.0, requires_grad=True)]
+    params[0].grad = Tensor(0.5)
+
+    optimizer = AdamW(
+        params, lr=0.1, betas=(0.9, 0.999), eps=1e-8, weight_decay=0.01
+    )
+
+    formatter.print_tensor_info("Parâmetro 1 (inicial)", params[0])
+
+    return optimizer, params
+
+
+class TestAdamW:
+    def test_adamw_single_step(self, adamw_setup, formatter):
+        formatter.print_banner("Teste do Otimizador AdamW")
+        formatter.print_section("Testando `optimizer.step()` (1 iteração)")
+
+        optimizer, params = adamw_setup
+
+        # Cálculo manual do passo (lr=0.1, betas=(0.9, 0.999), eps=1e-8, wd=0.01):
+        # m_hat = (0.1*0.5)/0.1 = 0.5 ; v_hat = (0.001*0.25)/0.001 = 0.25
+        # theta_new = 1.0 - 0.1 * (0.5 / (sqrt(0.25) + eps) + 0.01 * 1.0)
+        expected_p1_data = [0.899]
+
+        optimizer.step()
+
+        formatter.print_tensor_info("Parâmetro 1 (depois)", params[0])
+
+        flat_p1 = params[0]._flatten(params[0].data)
+        assert flat_p1 == pytest.approx(
+            expected_p1_data, abs=1e-4
+        ), f"Falha na atualização AdamW. Esperado {expected_p1_data}, obtido {flat_p1}"
+
+        formatter.logger.info("  ✅ Atualização de pesos (AdamW) verificada com sucesso.")
+
+    def test_adamw_zero_grad(self, adamw_setup, formatter):
+        formatter.print_section("Testando `optimizer.zero_grad()` (AdamW)")
+
+        optimizer, params = adamw_setup
+
+        optimizer.zero_grad()
+
+        flat_grad = params[0].grad._flatten(params[0].grad.data)
+        assert flat_grad == pytest.approx([0.0], abs=1e-9)
+
+        formatter.logger.info("  ✅ Zeragem de gradientes (AdamW) verificada com sucesso.")
+
+    def test_adamw_excludes_params_without_requires_grad(self, formatter):
+        formatter.print_section(
+            "Testando que AdamW ignora parâmetros com requires_grad=False"
+        )
+
+        frozen = Tensor(2.0, requires_grad=False)
+        trainable = Tensor(1.0, requires_grad=True)
+        optimizer = AdamW([frozen, trainable], lr=0.1)
+
+        assert optimizer.parameters == [trainable]
+
+        formatter.logger.info(
+            "  ✅ AdamW filtra corretamente parâmetros com requires_grad=False."
+        )

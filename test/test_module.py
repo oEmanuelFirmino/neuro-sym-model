@@ -191,3 +191,33 @@ class TestModule:
         assert all_grads_zero, "Os gradientes não foram zerados corretamente."
 
         formatter.logger.info("  ✅ Teste de integração concluído.")
+
+    def test_l1_weight_parameters_excludes_bias(self, formatter):
+        formatter.print_section_header("Teste de `l1_weight_parameters` (exclui bias)")
+
+        linear = Linear(in_features=3, out_features=2)
+        weight_params = linear.l1_weight_parameters()
+
+        assert weight_params == [linear.weights]
+        assert linear.bias not in weight_params
+
+        class SimpleNet(Module):
+            def __init__(self):
+                super().__init__()
+                self.add_module("fc1", Linear(in_features=3, out_features=4))
+                self.add_module("activation", ReLU())
+                self.add_module("fc2", Linear(in_features=4, out_features=1))
+
+            def forward(self, x):
+                return self.fc2(self.activation(self.fc1(x)))
+
+        model = SimpleNet()
+        model_weight_params = model.l1_weight_parameters()
+
+        assert model_weight_params == [model.fc1.weights, model.fc2.weights]
+        assert model.fc1.bias not in model_weight_params
+        assert model.fc2.bias not in model_weight_params
+
+        formatter.logger.info(
+            "  ✅ `l1_weight_parameters` retorna apenas matrizes de peso, sem bias."
+        )

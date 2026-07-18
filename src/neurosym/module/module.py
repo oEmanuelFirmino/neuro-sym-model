@@ -28,6 +28,17 @@ class Module(ABC):
             params.extend(module.parameters())
         return params
 
+    def l1_weight_parameters(self) -> list[Tensor]:
+        """Structural weight matrices subject to the ||W||_1 penalty.
+
+        Excludes biases and any other non-structural parameters by default;
+        leaf modules that own a weight matrix (e.g. Linear) override this.
+        """
+        params = []
+        for module in self._modules.values():
+            params.extend(module.l1_weight_parameters())
+        return params
+
     def zero_grad(self):
         for p in self.parameters():
             p.zero_grad()
@@ -70,6 +81,9 @@ class Linear(Module):
 
     def forward(self, x: Tensor) -> Tensor:
         return x.dot(self.weights) + self.bias
+
+    def l1_weight_parameters(self) -> list[Tensor]:
+        return [self.weights]
 
 
 class Sigmoid(Module):
