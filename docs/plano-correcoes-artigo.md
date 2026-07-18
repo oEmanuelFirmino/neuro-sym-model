@@ -243,6 +243,52 @@ confiável.
    encanamento funciona e mede o que diz medir". Essa pergunta científica fica
    para uma execução bem mais longa (ver nota de desempenho e decisão pendente
    abaixo).
+
+   **Rodada longa (DLG vs. MLP puro, 3000 épocas, 2 seeds, mesmo p=13,
+   `run_pilot_long.py`), executada em 2026-07-18:**
+
+   | Arquitetura | val_accuracy final | test_accuracy | T_g (τ=0.95) | tempo (2 seeds) |
+   |---|---|---|---|---|
+   | DLG | 5.1% ± 1.7 | 6.7% ± 1.7 | nunca atingido | 4994s (~83 min) |
+   | MLP puro | 8.5% ± 1.7 | 5.0% ± 5.0 | nunca atingido | 2335s (~39 min) |
+
+   **Resultado honesto e negativo**: mesmo com 15x mais épocas, nenhuma das
+   duas arquiteturas generalizou -- acurácia continua no nível do acaso
+   (1/13 ≈ 7,7%). A curva do DLG (`pilot_results/dlg_long.json`) mostra que o
+   treino **memoriza quase perfeitamente por volta da época 300**
+   (`l_data` cai para ~0,02, satisfação dos axiomas para 99,4%) e depois fica
+   mais **2700 épocas** nesse platô sem qualquer tendência de subida em
+   `val_accuracy` (oscila entre 5-15% o tempo todo, sem tendência). Ou seja:
+   isto não é "ainda não convergiu", é um platô de memorização estável que não
+   se rompeu mesmo em ~10x o tempo que levou para memorizar -- diferente do
+   padrão relatado na literatura de grokking, onde a transição eventualmente
+   ocorre.
+
+   Hipóteses mais prováveis para investigar antes de escalar para p=97 (nenhuma
+   testada ainda):
+   - **weight decay fraco demais** relativo à velocidade de memorização (o
+     padrão do AdamW aqui é `1e-2`; a literatura de grokking trata isso como o
+     hiperparâmetro mais sensível para induzir a transição, e por vezes exige
+     ordens de magnitude mais passos pós-memorização do que os 10x testados
+     aqui).
+   - **p=13 pode ser pequeno demais** para o efeito aparecer de forma limpa
+     (grande parte da literatura usa p≥97 especificamente).
+   - **capacidade do modelo** (embedding_dim=8, hidden=24) pode ser
+     insuficiente para representar a solução generalizante, mesmo que baste
+     para memorizar.
+   - **a formulação relacional em si** (avaliar a trinca `Add(a,b,c)` via
+     embeddings concatenados, em vez de prever `c` por classificação softmax
+     entre p classes, como é comum na literatura de grokking) pode ser
+     intrinsecamente mais difícil de grokar -- essa é uma pergunta metodológica
+     em aberto sobre a própria formulação do artigo, não só um problema de
+     hiperparâmetro, e vale investigar antes de comprometer o tempo de uma
+     rodada em p=97.
+
+   **Recomendação**: não escalar direto para p=97 sem antes fazer uma busca de
+   hiperparâmetros (weight decay, lr, capacidade) em pequena escala e
+   confirmar que a transição de grokking é alcançável neste framework para
+   *algum* ponto do espaço de configuração. Caso contrário corre-se o risco de
+   gastar um job de várias horas em p=97 só para reproduzir o mesmo platô.
 7. ⏸ **Pendente para fechar M3 por completo**: rodar a escala cheia (p=97, 10
    seeds, todas as 4 arquiteturas) — job bem mais longo, ver nota de desempenho
    abaixo — e documentar o protocolo de tuning de cada baseline + curvas de
