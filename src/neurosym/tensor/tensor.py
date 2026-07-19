@@ -1,3 +1,4 @@
+import math
 from typing import Any, Tuple, Union, Iterable, Optional, List
 from src.neurosym.tensor.backend import get_backend
 
@@ -297,6 +298,22 @@ class Tensor:
         out._backward = _backward
         return out
 
+    def log(self):
+        out_data = self.backend.apply_recursive(self.data, None, lambda a: math.log(a))
+        out = self._wrap_result(out_data, "log", (self,))
+
+        def _backward():
+            if self.requires_grad:
+                grad_data = self.backend.apply_recursive(
+                    self.data, out.grad.data, lambda a, b: b / a
+                )
+                self.grad.data = self.backend.apply_recursive(
+                    self.grad.data, grad_data, lambda a, b: a + b
+                )
+
+        out._backward = _backward
+        return out
+
     def relu(self):
         out_data = self.backend.relu(self.data)
         out = self._wrap_result(out_data, "ReLU", (self,))
@@ -317,16 +334,24 @@ class Tensor:
             raise ValueError(
                 "O gradiente pode ser calculado apenas para tensores escalares."
             )
+        # DFS pós-ordem iterativa: a versão recursiva estoura o limite de
+        # recursão do Python em grafos profundos (ex.: soma sequencial de
+        # milhares de perdas de fatos).
         topo = []
         visited = set()
-
-        def build_topo(v):
-            if v not in visited:
-                visited.add(v)
-                [build_topo(p) for p in v._parents]
-                topo.append(v)
-
-        build_topo(self)
+        stack = [(self, False)]
+        while stack:
+            node, processed = stack.pop()
+            if processed:
+                topo.append(node)
+                continue
+            if node in visited:
+                continue
+            visited.add(node)
+            stack.append((node, True))
+            for parent in node._parents:
+                if parent not in visited:
+                    stack.append((parent, False))
         self.grad = Tensor(1.0)
         for node in reversed(topo):
             node._backward()

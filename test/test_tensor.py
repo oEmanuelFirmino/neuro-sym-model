@@ -198,6 +198,40 @@ class TestTensorBackprop:
         assert flat_grad[1] == pytest.approx(1.0)
         assert flat_grad[2] == pytest.approx(0.0, abs=1e-6)
 
+    def test_log(self, formatter):
+        formatter.print_section_header("Logaritmo com Backpropagation")
+
+        import math
+
+        a = Tensor([[1.0, math.e, 4.0]], requires_grad=True)
+        b = a.log()
+        loss = b.sum()
+
+        formatter.print_operation_result("b = a.log()", b)
+
+        assert b._flatten(b.data) == pytest.approx([0.0, 1.0, math.log(4.0)])
+
+        loss.backward()
+
+        formatter.print_backward_info("a", a)
+
+        # d(log a)/da = 1/a
+        flat_grad = a.grad._flatten(a.grad.data)
+        assert flat_grad == pytest.approx([1.0, 1.0 / math.e, 0.25])
+
+    def test_deep_graph_backward_does_not_recurse(self, formatter):
+        formatter.print_section_header("Backward em grafo profundo (>2000 nós)")
+
+        x = Tensor(1.0, requires_grad=True)
+        acc = Tensor(0.0)
+        for _ in range(2500):
+            acc = acc + x
+
+        acc.backward()
+
+        # d(2500*x)/dx = 2500; a versão recursiva estourava o limite do Python
+        assert x.grad.data == pytest.approx(2500.0)
+
     def test_complex_chain(self, formatter):
         formatter.print_section_header("Cadeia Complexa (Linear Layer)")
 

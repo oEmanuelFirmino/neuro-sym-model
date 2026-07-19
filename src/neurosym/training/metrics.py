@@ -44,6 +44,25 @@ def time_to_generalization(
     return None
 
 
+def weight_sparsity(weight_tensors, eps: float = 1e-3) -> Optional[float]:
+    """Fração de pesos com |w| < eps sobre as matrizes estruturais fornecidas.
+
+    Métrica de esparsidade do artigo (Tabela 4), definida de forma
+    comparável entre arquiteturas (item m3 do parecer): sempre a fração de
+    pesos quase nulos das matrizes das camadas Linear dos predicados,
+    independentemente do mecanismo inferencial.
+    """
+    from src.neurosym.tensor.tensor import Tensor
+
+    total, near_zero = 0, 0
+    for w in weight_tensors:
+        for value in Tensor._flatten(w.data):
+            total += 1
+            if abs(value) < eps:
+                near_zero += 1
+    return near_zero / total if total else None
+
+
 def post_threshold_dip_count(
     val_curve: List[float], threshold: float = 0.95, patience: int = 1
 ) -> Optional[int]:
