@@ -215,3 +215,14 @@ graphify*
 # Documentos de trabalho internos e experimentos — não publicar no repositório
 docs/
 experiments/
+# Testes que dependem de experiments/ (mantidos apenas localmente)
+test/test_fidelity_sparsity.py
+test/test_hinton_family.py
+test/test_kinship_domain.py
+test/test_modular_addition.py
+test/test_modular_addition_run.py
+test/test_multiseed_runner.py
+test/test_softmax_formulation.py
+
+# Configuração local do editor
+.vscode/
