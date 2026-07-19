@@ -212,6 +212,6 @@ __marimo__/
 .claude/
 graphify*
 
-# Saídas de execuções de experimentos (regeneráveis via run_pilot.py etc.)
-experiments/**/pilot_results/
-experiments/**/sweep_results/
+# Documentos de trabalho internos e experimentos — não publicar no repositório
+docs/
+experiments/
