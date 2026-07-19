@@ -1,0 +1,9 @@
+{
+  "p": 13,
+  "embedding_dim": 16,
+  "hidden": 48,
+  "epochs": 3000,
+  "weight_decay": 1.0,
+  "val_eval_every": 10,
+  "use_axioms": false
+}

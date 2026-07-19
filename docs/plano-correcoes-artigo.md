@@ -290,6 +290,39 @@ confiável.
    *algum* ponto do espaço de configuração. Caso contrário corre-se o risco de
    gastar um job de várias horas em p=97 só para reproduzir o mesmo platô.
 
+   **Formulação softmax executada (2026-07-18, `run_softmax.py`, evidências em
+   `experiments/evidence/softmax_*`)** — p=13, 3000 épocas, 2 seeds, wd=1.0
+   (canônico da literatura de grokking), classificação entre p classes com
+   cross-entropy; axiomas traduzidos para o cenário distribucional
+   (`softmax_formulation.py`):
+
+   | Variante | val final | teste | Comportamento |
+   |---|---|---|---|
+   | softmax_dlg (com axiomas) | **31.4% ± 4.2** | **33.3% ± 5.0** | subida contínua desde ~época 100; seed 1 ainda subindo em 3000 |
+   | softmax_mlp (sem axiomas) | 0.0% ± 0.0 | 0.8% ± 0.8 | memoriza (l_data→0.005) e colapsa a validação a 0% |
+
+   **Primeiro resultado positivo genuíno do projeto**, com três leituras:
+   1. **A hipótese da formulação estava certa**: a formulação relacional
+      (triplas + MSE) não mostrou nenhum sinal de aprendizado generalizante em
+      nenhuma configuração; a formulação por classificação mostra subida clara
+      e monotônica — 4x acima do acaso e ainda subindo no fim do orçamento.
+   2. **Primeira evidência real a favor da alegação central do artigo**: a
+      diferença entre 31-36% e 0% é exatamente o termo L_semantic (axiomas de
+      comutatividade/identidade). O baseline puro memoriza e generaliza *pior
+      que o acaso*; com os axiomas, o modelo aprende estrutura transferível.
+   3. **Ressalvas para o texto**: (i) ainda não é a transição de grokking — o
+      limiar τ=0.95 não foi atingido e T_g segue indefinido; (ii) nesta
+      formulação o "DLG" se reduz ao termo semântico distribucional — o DAG
+      dinâmico/Product T-norm do artigo não participam (a inferência é um
+      classificador puro), então o resultado sustenta L_semantic, não a
+      arquitetura completa; o artigo precisa decidir como conciliar isso.
+
+   **Próximos passos recomendados**: (a) rodada mais longa (10k+ épocas) e/ou
+   leve ajuste de lr — a curva da seed 1 ainda subia em 3000; (b) para p=97,
+   o custo por época da formulação softmax com axiomas (~0.5s em p=13, ~56x
+   mais pares em p=97) exige antes as otimizações de desempenho já listadas
+   (AdamW vetorizado, mini-batching).
+
    **Sweep de hiperparâmetros executado (2026-07-18, `run_sweep.py`,
    resultados em `sweep_results/`)** — DLG apenas, p=13, 1500 épocas, seed 0,
    5 configurações cobrindo as hipóteses 1-3:
@@ -362,20 +395,46 @@ reporta sua contagem "ativa" na mesma unidade) **e** de um parágrafo metodológ
 explícito no artigo justificando a comparação — sem isso o parecer vai repetir a
 objeção.
 
-## Fase 6 — Explicabilidade quantitativa (M5)
+## Fase 6 — Explicabilidade quantitativa (M5) ⚠️ parcialmente concluída (2026-07-18)
 
-1. **Métrica de fidelidade/concentração**: para um conjunto de N consultas
-   (idealmente amostradas do(s) domínio(s) da Fase 3/4), medir a fração da massa do
-   gradiente que cai sobre entidades do fecho transitivo da consulta vs. fora dele.
-   Generalizar `explainability/explainer.py` (hoje só devolve top-k por consulta
-   única) para rodar em lote e agregar estatísticas.
-2. **Protocolo deletion/insertion**: zerar progressivamente os embeddings mais
-   influentes (por gradiente) e medir a degradação do grau de verdade previsto
-   (curva + AUC); fazer o inverso (inserção) para completude.
-3. **Comparação com XAI post-hoc**: como o motor é próprio (sem Captum/SHAP
-   prontos), implementar uma baseline leve de perturbação (leave-one-out) ou
-   gradientes integrados usando o autodiff já existente, só para servir de
-   contraponto ao método por gradiente puro.
+1. ✅ **Métrica de fidelidade/concentração** — `src/neurosym/explainability/metrics.py`:
+   `compute_influences` (norma L1 do gradiente por embedding), `concentration`
+   (fração da massa sobre as constantes relevantes), agregação sobre N consultas
+   via `evaluate_queries`. Testado com predicado de estrutura conhecida.
+2. ✅ **Protocolo deletion/insertion** — mesmo módulo: curvas de deleção/inserção
+   cumulativa com restauração garantida dos embeddings, AUC normalizada, e
+   comparação contra ordem aleatória como baseline de fidelidade.
+3. ⏸ **Comparação com XAI post-hoc** (leave-one-out / gradientes integrados) —
+   ainda pendente.
+
+**Primeira avaliação real (DLG memorizado, p=13, 25 consultas de validação,
+`experiments/evidence/explainability_dlg_p13/`):**
+
+| Métrica | Resultado |
+|---|---|
+| Concentração do gradiente | **1.000 ± 0.000** |
+| Deletion AUC (ordem do gradiente) | 0.712 ± 0.064 |
+| Deletion AUC (ordem aleatória) | 0.753 ± 0.213 |
+| Insertion AUC (ordem do gradiente) | 0.698 ± 0.335 |
+| Insertion AUC (ordem aleatória) | 0.683 ± 0.240 |
+
+**Leitura honesta, importante para o texto do artigo:**
+- A concentração perfeita (1.0) **não é evidência de explicação aprendida**
+  neste domínio: como as consultas são atômicas e grounded (sem encadeamento
+  de regras na inferência), o grafo computacional só toca os 3 embeddings da
+  tripla consultada — o gradiente das demais constantes é estruturalmente
+  zero. É uma propriedade da arquitetura, não do treinamento. A alegação do
+  artigo de "concentração no fecho transitivo" só se torna informativa num
+  domínio com encadeamento real de regras (ex.: o segundo domínio relacional
+  da Fase 4), onde o fecho é maior que as constantes literais da consulta.
+  O artigo não deve usar este número como evidência forte sem essa ressalva.
+- A fidelidade por deletion/insertion vai na direção certa (deletar na ordem
+  do gradiente degrada mais rápido: 0.712 < 0.753; inserir recupera mais
+  rápido: 0.698 > 0.683), mas as margens são pequenas e a variância alta —
+  em parte porque, com concentração 1.0, a ordem além das 3 constantes
+  relevantes é arbitrária (todas têm gradiente zero). Números medidos sobre
+  um modelo **memorizado, não generalizante** — devem ser re-medidos quando
+  houver um modelo que generalize.
 
 ## Fase 7 — Figuras (regeneradas a partir de dados reais)
 
