@@ -453,15 +453,46 @@ o OR de ~|E| ramos com valores ~0.5 tende a 1. A composição dedutiva exige
 cobertura de negativos no treino do predicado base — custo O(|E|²) que limita
 a escala e deve ser discutido honestamente.
 
-## Fase 5 — Sparsity comensurável entre arquiteturas (m3)
+## Fase 5 — Sparsity comensurável entre arquiteturas (m3) ✅ métrica + calibração (2026-07-18)
 
-Definir uma métrica única aplicável aos 4 mecanismos inferenciais (WMC, agregadores
-fuzzy, nAD, DAG+L1) — por exemplo "fração de parâmetros/arestas com contribuição
-efetiva acima de um limiar ε, normalizada pelo total de parâmetros/arestas
-possíveis do mesmo predicado". Isso precisa de instrumentação por baseline (cada um
-reporta sua contagem "ativa" na mesma unidade) **e** de um parágrafo metodológico
-explícito no artigo justificando a comparação — sem isso o parecer vai repetir a
-objeção.
+Métrica única implementada (`training/metrics.py:weight_sparsity`): fração de
+pesos |w| < ε (ε=1e-3) nas matrizes das camadas Linear dos predicados — a mesma
+régua para qualquer mecanismo inferencial, respondendo ao item m3. Medição e
+calibração executadas em p=13 (400 épocas, evidência em
+`experiments/evidence/fidelity_sparsity_p13/`):
+
+**Fidelidade axiomática em instanciações held-out + esparsidade por arquitetura:**
+
+| Arquitetura | Fidelidade geral | Comutatividade (held-out) | Identidade | Esparsidade |
+|---|---|---|---|---|
+| DLG | 0.882 | 0.856 | **0.998** | 2.0% |
+| MLP puro | 0.777 | 0.836 | **0.511** | 0.3% |
+| LTN | 0.879 | 0.854 | 0.995 | 0.2% |
+
+**Varredura de gamma_l1 (DLG) — trade-off esparsidade × fidelidade:**
+
+| gamma_l1 | Esparsidade | Fidelidade |
+|---|---|---|
+| 1e-4 (antigo) | 2.0% | 0.882 |
+| 1e-3 | 34.4% | 0.857 |
+| **1e-2** | **80.3%** | **0.820** |
+| 1e-1 | 82.3% | 0.730 |
+
+Leituras para o texto:
+1. **gamma=1e-2 é o ponto de operação**: 80% dos pesos zerados com perda modesta
+   de fidelidade (0.88→0.82) — a alegação de esparsidade/auditabilidade do
+   artigo agora tem uma curva de trade-off real por trás, em vez do gamma=1e-4
+   original que não produzia esparsidade alguma.
+2. **Treinar com axiomas produz modelos que os satisfazem**: gap de identidade
+   0.998 vs 0.511 contra o MLP puro. **Ressalva de honestidade**: as
+   instanciações de identidade medidas são as mesmas usadas como axioma de
+   treino (o axioma cobre todo o domínio), então esse número mistura
+   generalização com memorização do axioma; já a comutatividade é medida em
+   pares held-out genuínos — e aí a vantagem sobre o MLP é modesta
+   (0.856 vs 0.836). O texto deve reportar as duas separadamente.
+3. **Piso da métrica**: a implicação de Reichenbach dá I(t1,t2) ≥ 1−t1, então
+   predicados incertos (t≈0.5) já pontuam ~0.5+ sem saber nada — o parágrafo
+   metodológico do artigo deve explicitar isso para não inflar a leitura.
 
 ## Fase 6 — Explicabilidade quantitativa (M5) ⚠️ parcialmente concluída (2026-07-18)
 
