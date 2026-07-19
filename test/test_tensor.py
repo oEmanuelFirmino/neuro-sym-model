@@ -219,6 +219,19 @@ class TestTensorBackprop:
         flat_grad = a.grad._flatten(a.grad.data)
         assert flat_grad == pytest.approx([1.0, 1.0 / math.e, 0.25])
 
+    def test_deep_graph_backward_does_not_recurse(self, formatter):
+        formatter.print_section_header("Backward em grafo profundo (>2000 nós)")
+
+        x = Tensor(1.0, requires_grad=True)
+        acc = Tensor(0.0)
+        for _ in range(2500):
+            acc = acc + x
+
+        acc.backward()
+
+        # d(2500*x)/dx = 2500; a versão recursiva estourava o limite do Python
+        assert x.grad.data == pytest.approx(2500.0)
+
     def test_complex_chain(self, formatter):
         formatter.print_section_header("Cadeia Complexa (Linear Layer)")
 

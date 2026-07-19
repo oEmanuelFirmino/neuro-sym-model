@@ -334,16 +334,24 @@ class Tensor:
             raise ValueError(
                 "O gradiente pode ser calculado apenas para tensores escalares."
             )
+        # DFS pós-ordem iterativa: a versão recursiva estoura o limite de
+        # recursão do Python em grafos profundos (ex.: soma sequencial de
+        # milhares de perdas de fatos).
         topo = []
         visited = set()
-
-        def build_topo(v):
-            if v not in visited:
-                visited.add(v)
-                [build_topo(p) for p in v._parents]
-                topo.append(v)
-
-        build_topo(self)
+        stack = [(self, False)]
+        while stack:
+            node, processed = stack.pop()
+            if processed:
+                topo.append(node)
+                continue
+            if node in visited:
+                continue
+            visited.add(node)
+            stack.append((node, True))
+            for parent in node._parents:
+                if parent not in visited:
+                    stack.append((parent, False))
         self.grad = Tensor(1.0)
         for node in reversed(topo):
             node._backward()
