@@ -453,6 +453,48 @@ o OR de ~|E| ramos com valores ~0.5 tende a 1. A composição dedutiva exige
 cobertura de negativos no treino do predicado base — custo O(|E|²) que limita
 a escala e deve ser discutido honestamente.
 
+### Fase 4b — Dataset real: árvore genealógica de Hinton (1986) ✅ (2026-07-19)
+
+Replicação do resultado sintético num **benchmark canônico e citável**
+(Hinton, *Learning Distributed Representations of Concepts*, 1986 — a origem
+dos kinship benchmarks usados por NTP/∂ILP, dando comparabilidade direta com
+os sistemas dos documentos de posicionamento). `experiments/hinton_family/`:
+12 pessoas, 8 predicados base treinados (cobertura completa de negativos,
+split 85/15), 4 relações derivadas **nunca treinadas** compostas por regras
+com gênero via DAG de prova (ex.: `uncle(x,y) = ⋁_z brother(x,z) ∧
+(father(z,y) ∨ mother(z,y))`). Evidência completa (curvas de treino PNG/PDF,
+tabelas, JSONs) em `experiments/evidence/hinton_family/`.
+
+**Resultados (500 épocas, ~20 min; acurácia held-out nos fatos base: 93,0%):**
+
+| Relação | Composta pos/neg | Plana (treinada) pos/neg |
+|---|---|---|
+| uncle | 0.945 / 0.003 | 0.965 / 0.001 |
+| aunt | 0.954 / 0.000 | 0.980 / 0.000 |
+| nephew | 0.752 / 0.002 | 0.974 / 0.000 |
+| niece | 0.778 / 0.000 | 0.971 / 0.000 |
+
+| Explicabilidade | Composta | Plana |
+|---|---|---|
+| Massa de gradiente no intermediário do caminho | **0.385** | 0.000 |
+| Δ verdade ao deletar o intermediário | **0.771** | 0.000 |
+
+Leituras:
+1. **A dedução composta discrimina nas 4 relações** (pos ≥ 0.75, neg ≤ 0.003)
+   sem nunca ter visto o conceito derivado — replica o achado sintético num
+   dataset real, com regras assimétricas de gênero.
+2. **Assimetria interessante para o texto**: uncle/aunt (~0.95) > nephew/niece
+   (~0.76). As regras de nephew/niece compõem `son/daughter ∧ sibling`, cujos
+   predicados-base têm menos exemplos positivos por entidade — a qualidade da
+   dedução herda a calibração do elo mais fraco da regra. Discussão honesta de
+   como o erro do predicado base se propaga pela composição.
+3. **Explicabilidade arquitetural confirmada no dataset real**: 38,5% da massa
+   de gradiente no intermediário z da regra (estruturalmente 0 no plano) e
+   deleção causal Δ=0.77 vs 0.00.
+4. Bugs de infraestrutura encontrados e corrigidos ao escalar: RecursionError
+   no backward (topological sort agora iterativa — também desbloqueia p=97) e
+   encoding cp1252 do console Windows.
+
 ## Fase 5 — Sparsity comensurável entre arquiteturas (m3) ✅ métrica + calibração (2026-07-18)
 
 Métrica única implementada (`training/metrics.py:weight_sparsity`): fração de

@@ -94,7 +94,9 @@ def _plot_run_curves(run: Dict, out_base: Path, title: str):
                 first = next((v for v in values if v), None)
                 if first:
                     values = [v / first if v is not None else None for v in values]
-                    ax_loss.plot(epochs, values, label="l1_penalty (relative)", alpha=0.7)
+                    ax_loss.plot(
+                        epochs, values, label="l1_penalty (relative)", alpha=0.7
+                    )
                 continue
             ax_loss.plot(epochs, values, label=key, alpha=0.8)
 
@@ -111,7 +113,9 @@ def _plot_run_curves(run: Dict, out_base: Path, title: str):
 
     handles1, labels1 = ax_loss.get_legend_handles_labels()
     handles2, labels2 = ax_acc.get_legend_handles_labels()
-    ax_loss.legend(handles1 + handles2, labels1 + labels2, fontsize=8, loc="center left")
+    ax_loss.legend(
+        handles1 + handles2, labels1 + labels2, fontsize=8, loc="center left"
+    )
 
     fig.tight_layout()
     fig.savefig(out_base.with_suffix(".png"), dpi=150)
@@ -182,7 +186,12 @@ def save_comparison_report(
     out_dir.mkdir(parents=True, exist_ok=True)
 
     # --- tabela comparativa ---
-    lines = [f"# {name} — comparison", "", "| Architecture | T_g | Final val acc | Test acc | Final L1 |", "|---|---|---|---|---|"]
+    lines = [
+        f"# {name} — comparison",
+        "",
+        "| Architecture | T_g | Final val acc | Test acc | Final L1 |",
+        "|---|---|---|---|---|",
+    ]
     for arch, result in results.items():
         row = dict(_summary_rows(result))
         lines.append(
@@ -223,13 +232,23 @@ def save_comparison_report(
             return value.get("mean")
         return value
 
-    val_accs = [_scalar(dict(_summary_rows(r)).get("Final val accuracy")) for r in results.values()]
-    test_accs = [_scalar(dict(_summary_rows(r)).get("Test accuracy")) for r in results.values()]
+    val_accs = [
+        _scalar(dict(_summary_rows(r)).get("Final val accuracy"))
+        for r in results.values()
+    ]
+    test_accs = [
+        _scalar(dict(_summary_rows(r)).get("Test accuracy")) for r in results.values()
+    ]
 
     x = range(len(archs))
     width = 0.35
     fig, ax = plt.subplots(figsize=(7, 4))
-    ax.bar([i - width / 2 for i in x], [v or 0 for v in val_accs], width, label="Validation")
+    ax.bar(
+        [i - width / 2 for i in x],
+        [v or 0 for v in val_accs],
+        width,
+        label="Validation",
+    )
     ax.bar([i + width / 2 for i in x], [v or 0 for v in test_accs], width, label="Test")
     ax.set_xticks(list(x))
     ax.set_xticklabels(archs, rotation=15, ha="right", fontsize=8)

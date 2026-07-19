@@ -23,6 +23,8 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+# console Windows usa cp1252; sem isto, prints com caracteres como Δ quebram o run
+sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 from src.neurosym.tensor.backend import set_backend
 
