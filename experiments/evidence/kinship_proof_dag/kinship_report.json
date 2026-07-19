@@ -1,0 +1,175 @@
+{
+  "config": {
+    "seed": 0,
+    "embedding_dim": 8,
+    "hidden": 16,
+    "epochs": 500,
+    "proof_depth": 3,
+    "edges": [
+      [
+        "a0",
+        "a1"
+      ],
+      [
+        "a1",
+        "a2"
+      ],
+      [
+        "a2",
+        "a3"
+      ],
+      [
+        "b0",
+        "b1"
+      ],
+      [
+        "b1",
+        "b2"
+      ],
+      [
+        "b2",
+        "b3"
+      ],
+      [
+        "c0",
+        "c1"
+      ]
+    ]
+  },
+  "train_accuracy": {
+    "parent": 1.0,
+    "ancestor_flat": 1.0
+  },
+  "logical_consistency": {
+    "composed_truth_positives": {
+      "mean": 0.9418608742734795,
+      "std": 0.01656168305020465,
+      "n": 6
+    },
+    "composed_truth_negatives": {
+      "mean": 0.016829509145938067,
+      "std": 0.013529823750799204,
+      "n": 12
+    },
+    "flat_truth_positives": {
+      "mean": 0.992355309699542,
+      "std": 0.005133683688380374,
+      "n": 6
+    },
+    "flat_truth_negatives": {
+      "mean": 0.0030972875168195925,
+      "std": 0.005340584992145496,
+      "n": 12
+    },
+    "note": "composed nunca foi treinado em pares ancestral; discrimina\u00e7\u00e3o positiva/negativa emerge da composi\u00e7\u00e3o do predicado parent aprendido"
+  },
+  "explainability": {
+    "n_queries": 6,
+    "intermediate_mass_composed": {
+      "mean": 0.44659692144882573,
+      "std": 0.08629020768728306,
+      "n": 6
+    },
+    "intermediate_mass_flat": {
+      "mean": 0.0,
+      "std": 0.0,
+      "n": 6
+    },
+    "concentration_composed": {
+      "mean": 0.9996076472234495,
+      "std": 0.00013640256001668544,
+      "n": 6
+    },
+    "concentration_flat": {
+      "mean": 1.0,
+      "std": 0.0,
+      "n": 6
+    },
+    "deletion_delta_composed": {
+      "mean": 0.9308291509611362,
+      "std": 0.020487401103048516,
+      "n": 6
+    },
+    "deletion_delta_flat": {
+      "mean": 0.0,
+      "std": 0.0,
+      "n": 6
+    },
+    "per_query": [
+      {
+        "query": "ancestor(a0,a3)",
+        "intermediates": [
+          "a1",
+          "a2"
+        ],
+        "intermediate_mass_composed": 0.5415733153879585,
+        "intermediate_mass_flat": 0.0,
+        "concentration_composed": 0.999422747951588,
+        "concentration_flat": 1.0,
+        "deletion_delta_composed": 0.9283965905564414,
+        "deletion_delta_flat": 0.0
+      },
+      {
+        "query": "ancestor(a0,a2)",
+        "intermediates": [
+          "a1"
+        ],
+        "intermediate_mass_composed": 0.3713366691335427,
+        "intermediate_mass_flat": 0.0,
+        "concentration_composed": 0.9995890539324453,
+        "concentration_flat": 1.0,
+        "deletion_delta_composed": 0.9491209092802605,
+        "deletion_delta_flat": 0.0
+      },
+      {
+        "query": "ancestor(a1,a3)",
+        "intermediates": [
+          "a2"
+        ],
+        "intermediate_mass_composed": 0.5223607506302773,
+        "intermediate_mass_flat": 0.0,
+        "concentration_composed": 0.999469716249837,
+        "concentration_flat": 1.0,
+        "deletion_delta_composed": 0.9621871149457778,
+        "deletion_delta_flat": 0.0
+      },
+      {
+        "query": "ancestor(b0,b2)",
+        "intermediates": [
+          "b1"
+        ],
+        "intermediate_mass_composed": 0.4421246461926266,
+        "intermediate_mass_flat": 0.0,
+        "concentration_composed": 0.9997844539341912,
+        "concentration_flat": 1.0,
+        "deletion_delta_composed": 0.9202815795630074,
+        "deletion_delta_flat": 0.0
+      },
+      {
+        "query": "ancestor(b0,b3)",
+        "intermediates": [
+          "b1",
+          "b2"
+        ],
+        "intermediate_mass_composed": 0.5013178692322174,
+        "intermediate_mass_flat": 0.0,
+        "concentration_composed": 0.9997713975879354,
+        "concentration_flat": 1.0,
+        "deletion_delta_composed": 0.8981592022444249,
+        "deletion_delta_flat": 0.0
+      },
+      {
+        "query": "ancestor(b1,b3)",
+        "intermediates": [
+          "b2"
+        ],
+        "intermediate_mass_composed": 0.30086827811633193,
+        "intermediate_mass_flat": 0.0,
+        "concentration_composed": 0.9996085136847002,
+        "concentration_flat": 1.0,
+        "deletion_delta_composed": 0.9268295091769049,
+        "deletion_delta_flat": 0.0
+      }
+    ]
+  }
+}

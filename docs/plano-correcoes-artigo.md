@@ -17,6 +17,41 @@ engenharia nova no framework (a maior parte do esforço).
 
 ---
 
+## ⚑ Redirecionamento estratégico (decisão do autor, 2026-07-18)
+
+Após os experimentos da Fase 3 (nenhuma configuração da formulação relacional
+generaliza; a formulação softmax generaliza graças ao termo semântico, mas sem
+usar o DAG/T-norm na inferência), o autor decidiu **amenizar as alegações de
+grokking/generalização acelerada e reposicionar o artigo em explicabilidade +
+consistência lógica** — a saída que o próprio parecer oferece em M2 ("Ou
+podemos amenizar as alegações"). Consequências:
+
+1. **Tese revisada do artigo**: o DLG é um framework neuro-simbólico
+   diferenciável cuja arquitetura (DAG dinâmico + Product T-norm + L1) entrega
+   (i) *consistência lógica mensurável* (fidelidade axiomática alta em dados
+   não vistos) e (ii) *explicabilidade intrínseca mensurável* (atribuição por
+   gradiente concentrada no fecho da consulta, validada por protocolos de
+   deletion/insertion). A melhora de generalização induzida por restrições
+   semânticas vira um achado secundário, reportado com honestidade (evidência:
+   experimento softmax, 31-36% vs 0%), sem alegar aceleração de grokking — a
+   transição completa não foi observada.
+2. **Título/resumo precisarão mudar**: "Generalização Acelerada" sai do título
+   ou é substituído por algo defensável (ex.: "Consistência Lógica e
+   Explicabilidade Intrínseca").
+3. **Prioridade experimental invertida**: as Fases 5 (esparsidade) e 6
+   (explicabilidade) passam à frente da caça ao grokking em p=97. Em
+   particular, a explicabilidade só é evidência *da arquitetura* num domínio
+   com **encadeamento de regras na inferência** (o fecho transitivo maior que
+   as constantes literais da consulta) — o que torna o segundo domínio
+   (Fase 4, parentesco/ancestral com consultas compostas via DAG de prova) o
+   experimento central do artigo reposicionado, não um complemento.
+4. **T_g e as curvas de grokking** permanecem no artigo como análise honesta
+   (incluindo o resultado negativo da formulação relacional e o positivo do
+   termo semântico na formulação softmax), mas saem do posto de contribuição
+   principal.
+
+---
+
 ## Visão geral do gap atual
 
 O repositório hoje só tem dois exemplos de brinquedo (`examples/socrates`,
@@ -380,10 +415,43 @@ frequência/tamanho da avaliação O(p) em domínios grandes.
 
 ---
 
-## Fase 4 — Segundo domínio (M2)
+## Fase 4 — Segundo domínio (M2) ✅ implementado e com resultados (2026-07-18)
 
-Depende da decisão pendente da Fase 0. Reaproveita toda a Fase 2 (T_g, L1, split,
-runner multi-seed) — só troca o domínio/dataset e os axiomas.
+Promovido a **experimento central** pelo redirecionamento estratégico.
+`experiments/kinship/`: árvores genealógicas pequenas; predicado base
+`parent(x,y)` aprendido de fatos; predicado derivado `ancestor(x,z)` **nunca
+treinado** — avaliado em tempo de consulta compondo dinamicamente a fórmula de
+prova `parent(x,z) ∨ ⋁_m [parent(x,m) ∧ ancestor(m,z)]` com Product T-norms
+(a "execução dinâmica via DAG" do artigo, concreta). Baseline de contraste:
+`ancestor_flat`, MLP treinado diretamente nos pares, sem composição.
+
+**Resultados (500 épocas, evidência em `experiments/evidence/kinship_proof_dag/`):**
+
+| Métrica | Composta (DAG de prova) | Plana (MLP direto) |
+|---|---|---|
+| Verdade em pares ancestral verdadeiros | 0.942 ± 0.017 | 0.992 ± 0.005 |
+| Verdade em pares falsos | **0.017 ± 0.014** | 0.003 ± 0.005 |
+| Massa de gradiente nos intermediários do caminho | **0.447 ± 0.086** | **0.000** |
+| Concentração no fecho da consulta | 0.9996 | 1.0 |
+| Δ verdade ao deletar os intermediários | **0.931 ± 0.020** | **0.000** |
+
+Duas evidências centrais para o artigo reposicionado:
+1. **Consistência lógica / transferência dedutiva**: a inferência composta
+   discrimina quase perfeitamente (0.94 vs 0.02) **sem nunca ter sido treinada
+   no conceito derivado** — o raciocínio emerge da composição do predicado base
+   pelo DAG. O predicado plano precisa de supervisão direta para o mesmo.
+2. **Explicabilidade arquitetural**: ~45% da massa de gradiente recai sobre os
+   intermediários do caminho de prova (estruturalmente **zero** no plano), e
+   deletá-los destrói a predição composta (Δ=0.93) sem afetar em nada a plana —
+   a explicação é causalmente fiel à cadeia de raciocínio, propriedade que só
+   existe porque a inferência atravessa o DAG.
+
+**Limitação metodológica registrada (para o texto)**: a composição via
+t-conorm satura se o predicado base não estiver calibrado em todos os
+não-arcos (com negativos amostrados 2:1, a verdade dos pares falsos era 0.92!);
+o OR de ~|E| ramos com valores ~0.5 tende a 1. A composição dedutiva exige
+cobertura de negativos no treino do predicado base — custo O(|E|²) que limita
+a escala e deve ser discutido honestamente.
 
 ## Fase 5 — Sparsity comensurável entre arquiteturas (m3)
 
