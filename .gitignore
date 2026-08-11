@@ -210,11 +210,11 @@ marimo/_lsp/
 __marimo__/
 
 .claude/
+.agents/
 graphify*
 
 # Documentos de trabalho internos e experimentos — não publicar no repositório
 docs/
-experiments/
 # Testes que dependem de experiments/ (mantidos apenas localmente)
 test/test_fidelity_sparsity.py
 test/test_hinton_family.py

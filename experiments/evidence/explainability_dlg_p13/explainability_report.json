@@ -1,0 +1,240 @@
+{
+  "config": {
+    "p": 13,
+    "embedding_dim": 8,
+    "hidden": 24,
+    "epochs": 400,
+    "val_eval_every": 20,
+    "gamma_l1": 0.0001
+  },
+  "report": {
+    "n_queries": 25,
+    "concentration": {
+      "mean": 1.0,
+      "std": 0.0,
+      "n": 25
+    },
+    "deletion_auc_gradient": {
+      "mean": 0.7118453896891381,
+      "std": 0.06444330869324615,
+      "n": 25
+    },
+    "deletion_auc_random": {
+      "mean": 0.7534681727531823,
+      "std": 0.21252002553384328,
+      "n": 25
+    },
+    "insertion_auc_gradient": {
+      "mean": 0.6984261979253036,
+      "std": 0.3345372417332044,
+      "n": 25
+    },
+    "insertion_auc_random": {
+      "mean": 0.6827591867291529,
+      "std": 0.2401588157088968,
+      "n": 25
+    },
+    "per_query": [
+      {
+        "query": "Add(Const(0), Const(7), Const(7))",
+        "concentration": 1.0,
+        "deletion_auc_gradient": 0.6820508002686964,
+        "deletion_auc_random": 0.3599605355249423,
+        "insertion_auc_gradient": 0.055043471736846775,
+        "insertion_auc_random": 0.4107297000887656
+      },
+      {
+        "query": "Add(Const(3), Const(0), Const(3))",
+        "concentration": 1.0,
+        "deletion_auc_gradient": 0.7556456299253526,
+        "deletion_auc_random": 0.7521940767070098,
+        "insertion_auc_gradient": 0.9515915467678037,
+        "insertion_auc_random": 0.9550430999861464
+      },
+      {
+        "query": "Add(Const(1), Const(7), Const(8))",
+        "concentration": 1.0,
+        "deletion_auc_gradient": 0.7715949057955271,
+        "deletion_auc_random": 0.9563355207132404,
+        "insertion_auc_gradient": 0.9141012920461888,
+        "insertion_auc_random": 0.7792150271685853
+      },
+      {
+        "query": "Add(Const(0), Const(5), Const(5))",
+        "concentration": 1.0,
+        "deletion_auc_gradient": 0.7531532214538996,
+        "deletion_auc_random": 0.9051312809452462,
+        "insertion_auc_gradient": 0.9789999339607439,
+        "insertion_auc_random": 0.876290780330411
+      },
+      {
+        "query": "Add(Const(1), Const(9), Const(10))",
+        "concentration": 1.0,
+        "deletion_auc_gradient": 0.7765804621886202,
+        "deletion_auc_random": 0.9174650410805408,
+        "insertion_auc_gradient": 0.9704101439120439,
+        "insertion_auc_random": 0.9590371516161502
+      },
+      {
+        "query": "Add(Const(7), Const(3), Const(10))",
+        "concentration": 1.0,
+        "deletion_auc_gradient": 0.7752116731110423,
+        "deletion_auc_random": 0.8728802410909582,
+        "insertion_auc_gradient": 0.9531364093098006,
+        "insertion_auc_random": 0.9282786473039033
+      },
+      {
+        "query": "Add(Const(3), Const(5), Const(8))",
+        "concentration": 1.0,
+        "deletion_auc_gradient": 0.7709954339643568,
+        "deletion_auc_random": 0.8756458796907499,
+        "insertion_auc_gradient": 0.9433137624366775,
+        "insertion_auc_random": 0.9114402376255623
+      },
+      {
+        "query": "Add(Const(12), Const(7), Const(6))",
+        "concentration": 1.0,
+        "deletion_auc_gradient": 0.6066091220779206,
+        "deletion_auc_random": 0.49403270317664744,
+        "insertion_auc_gradient": 0.34109736065017426,
+        "insertion_auc_random": 0.2560920743026437
+      },
+      {
+        "query": "Add(Const(12), Const(12), Const(11))",
+        "concentration": 1.0,
+        "deletion_auc_gradient": 0.749093508002014,
+        "deletion_auc_random": 0.9145389999932204,
+        "insertion_auc_gradient": 0.9212113607574647,
+        "insertion_auc_random": 0.7665856149197621
+      },
+      {
+        "query": "Add(Const(9), Const(11), Const(7))",
+        "concentration": 1.0,
+        "deletion_auc_gradient": 0.737810031969132,
+        "deletion_auc_random": 0.4946677361786825,
+        "insertion_auc_gradient": 0.5747995897678712,
+        "insertion_auc_random": 0.48675215508462255
+      },
+      {
+        "query": "Add(Const(9), Const(2), Const(11))",
+        "concentration": 1.0,
+        "deletion_auc_gradient": 0.6830194221681094,
+        "deletion_auc_random": 0.9290371036806301,
+        "insertion_auc_gradient": 0.9630270145452334,
+        "insertion_auc_random": 0.5943834481119488
+      },
+      {
+        "query": "Add(Const(1), Const(4), Const(5))",
+        "concentration": 1.0,
+        "deletion_auc_gradient": 0.7701818126556083,
+        "deletion_auc_random": 0.8769604473496875,
+        "insertion_auc_gradient": 0.9793658130009316,
+        "insertion_auc_random": 0.911079616851646
+      },
+      {
+        "query": "Add(Const(11), Const(2), Const(0))",
+        "concentration": 1.0,
+        "deletion_auc_gradient": 0.7508546519647586,
+        "deletion_auc_random": 0.6058336577718879,
+        "insertion_auc_gradient": 0.6094084756009639,
+        "insertion_auc_random": 0.624702830879196
+      },
+      {
+        "query": "Add(Const(4), Const(1), Const(5))",
+        "concentration": 1.0,
+        "deletion_auc_gradient": 0.7602346318451856,
+        "deletion_auc_random": 0.8632331393958441,
+        "insertion_auc_gradient": 0.9756495545749991,
+        "insertion_auc_random": 0.9347596796012754
+      },
+      {
+        "query": "Add(Const(2), Const(1), Const(3))",
+        "concentration": 1.0,
+        "deletion_auc_gradient": 0.7613996524373204,
+        "deletion_auc_random": 0.9367935039140686,
+        "insertion_auc_gradient": 0.9253213443758229,
+        "insertion_auc_random": 0.7808660379217998
+      },
+      {
+        "query": "Add(Const(9), Const(10), Const(6))",
+        "concentration": 1.0,
+        "deletion_auc_gradient": 0.6824872392802223,
+        "deletion_auc_random": 0.9730088436269361,
+        "insertion_auc_gradient": 0.975109863736128,
+        "insertion_auc_random": 0.5519254360294857
+      },
+      {
+        "query": "Add(Const(10), Const(4), Const(1))",
+        "concentration": 1.0,
+        "deletion_auc_gradient": 0.7384603026360246,
+        "deletion_auc_random": 0.6537166851072957,
+        "insertion_auc_gradient": 0.5479220728871611,
+        "insertion_auc_random": 0.8060983047575966
+      },
+      {
+        "query": "Add(Const(11), Const(10), Const(8))",
+        "concentration": 1.0,
+        "deletion_auc_gradient": 0.7714776172040991,
+        "deletion_auc_random": 0.9581487418134718,
+        "insertion_auc_gradient": 0.9660649703032752,
+        "insertion_auc_random": 0.6902470181832647
+      },
+      {
+        "query": "Add(Const(5), Const(2), Const(7))",
+        "concentration": 1.0,
+        "deletion_auc_gradient": 0.636689176246742,
+        "deletion_auc_random": 0.7372660928920745,
+        "insertion_auc_gradient": 0.0796055082146022,
+        "insertion_auc_random": 0.1574903132327717
+      },
+      {
+        "query": "Add(Const(3), Const(11), Const(1))",
+        "concentration": 1.0,
+        "deletion_auc_gradient": 0.6259402461059965,
+        "deletion_auc_random": 0.4274732238612237,
+        "insertion_auc_gradient": 0.1730918971182013,
+        "insertion_auc_random": 0.6734187831441213
+      },
+      {
+        "query": "Add(Const(7), Const(6), Const(0))",
+        "concentration": 1.0,
+        "deletion_auc_gradient": 0.5767991606736036,
+        "deletion_auc_random": 0.19893776843365202,
+        "insertion_auc_gradient": 0.17445979920829896,
+        "insertion_auc_random": 0.5603750349897337
+      },
+      {
+        "query": "Add(Const(8), Const(5), Const(0))",
+        "concentration": 1.0,
+        "deletion_auc_gradient": 0.7204973686446585,
+        "deletion_auc_random": 0.9762480831231031,
+        "insertion_auc_gradient": 0.9781851780907843,
+        "insertion_auc_random": 0.8196108966358374
+      },
+      {
+        "query": "Add(Const(10), Const(9), Const(6))",
+        "concentration": 1.0,
+        "deletion_auc_gradient": 0.6694375009940118,
+        "deletion_auc_random": 0.6942623996209717,
+        "insertion_auc_gradient": 0.7606305807033381,
+        "insertion_auc_random": 0.6849503680875049
+      },
+      {
+        "query": "Add(Const(1), Const(6), Const(7))",
+        "concentration": 1.0,
+        "deletion_auc_gradient": 0.5633389723753771,
+        "deletion_auc_random": 0.8092127346592848,
+        "insertion_auc_gradient": 0.12780218511780533,
+        "insertion_auc_random": 0.11039194055460985
+      },
+      {
+        "query": "Add(Const(1), Const(3), Const(4))",
+        "concentration": 1.0,
+        "deletion_auc_gradient": 0.7065721982401755,
+        "deletion_auc_random": 0.6537198784781888,
+        "insertion_auc_gradient": 0.6213058193094285,
+        "insertion_auc_random": 0.8392154708214806
+      }
+    ]
+  }
+}
