@@ -1,0 +1,189 @@
+{
+  "config": {
+    "dataset": "hinton_family_english_tree_1986",
+    "seed": 0,
+    "embedding_dim": 8,
+    "hidden": 16,
+    "epochs": 500,
+    "val_frac": 0.15
+  },
+  "consistency": {
+    "uncle": {
+      "composed_positives": {
+        "mean": 0.9446634446077773,
+        "std": 0.011684186998726698,
+        "n": 2
+      },
+      "composed_negatives": {
+        "mean": 0.0026602507804556535,
+        "std": 0.006896553735272212,
+        "n": 10
+      },
+      "flat_positives": {
+        "mean": 0.9645238859052249,
+        "std": 0.005198743472221712,
+        "n": 2
+      },
+      "flat_negatives": {
+        "mean": 0.0006523104877997523,
+        "std": 0.0017986537057275637,
+        "n": 10
+      }
+    },
+    "aunt": {
+      "composed_positives": {
+        "mean": 0.9543361746989152,
+        "std": 0.006341590688153931,
+        "n": 2
+      },
+      "composed_negatives": {
+        "mean": 0.00045946098684593003,
+        "std": 0.0007325517838107624,
+        "n": 10
+      },
+      "flat_positives": {
+        "mean": 0.979762749856161,
+        "std": 0.005182736838140245,
+        "n": 2
+      },
+      "flat_negatives": {
+        "mean": 0.00030034633705998783,
+        "std": 0.0005877836353416439,
+        "n": 10
+      }
+    },
+    "nephew": {
+      "composed_positives": {
+        "mean": 0.7523765672314444,
+        "std": 0.18568039874479902,
+        "n": 2
+      },
+      "composed_negatives": {
+        "mean": 0.002397920799064589,
+        "std": 0.006637210277259862,
+        "n": 10
+      },
+      "flat_positives": {
+        "mean": 0.9743140997271164,
+        "std": 0.0040319099507724054,
+        "n": 2
+      },
+      "flat_negatives": {
+        "mean": 9.372843835505086e-05,
+        "std": 0.00014465974236681152,
+        "n": 10
+      }
+    },
+    "niece": {
+      "composed_positives": {
+        "mean": 0.7775329268668258,
+        "std": 0.19000309359207507,
+        "n": 2
+      },
+      "composed_negatives": {
+        "mean": 6.777135907454869e-05,
+        "std": 0.00014942371121688992,
+        "n": 10
+      },
+      "flat_positives": {
+        "mean": 0.9706789826845479,
+        "std": 0.0019857502592694476,
+        "n": 2
+      },
+      "flat_negatives": {
+        "mean": 0.00014468636763880364,
+        "std": 0.00023578270552299555,
+        "n": 10
+      }
+    }
+  },
+  "explainability": {
+    "n_queries": 8,
+    "intermediate_mass_composed": {
+      "mean": 0.3847011652308816,
+      "std": 0.10581373805083019,
+      "n": 8
+    },
+    "intermediate_mass_flat": {
+      "mean": 0.0,
+      "std": 0.0,
+      "n": 8
+    },
+    "deletion_delta_composed": {
+      "mean": 0.7705613883607701,
+      "std": 0.1819392784067016,
+      "n": 8
+    },
+    "deletion_delta_flat": {
+      "mean": 0.0,
+      "std": 0.0,
+      "n": 8
+    },
+    "per_query": [
+      {
+        "query": "uncle(arthur,charlotte)",
+        "intermediate": "victoria",
+        "intermediate_mass_composed": 0.35643004801076544,
+        "intermediate_mass_flat": 0.0,
+        "deletion_delta_composed": 0.867798037361745,
+        "deletion_delta_flat": 0.0
+      },
+      {
+        "query": "uncle(arthur,colin)",
+        "intermediate": "victoria",
+        "intermediate_mass_composed": 0.3170880609142226,
+        "intermediate_mass_flat": 0.0,
+        "deletion_delta_composed": 0.7938947282132677,
+        "deletion_delta_flat": 0.0
+      },
+      {
+        "query": "aunt(jennifer,charlotte)",
+        "intermediate": "james",
+        "intermediate_mass_composed": 0.5299909191497945,
+        "intermediate_mass_flat": 0.0,
+        "deletion_delta_composed": 0.8913367958123981,
+        "deletion_delta_flat": 0.0
+      },
+      {
+        "query": "aunt(jennifer,colin)",
+        "intermediate": "james",
+        "intermediate_mass_composed": 0.4022435305866083,
+        "intermediate_mass_flat": 0.0,
+        "deletion_delta_composed": 0.8453547047284251,
+        "deletion_delta_flat": 0.0
+      },
+      {
+        "query": "nephew(colin,arthur)",
+        "intermediate": "victoria",
+        "intermediate_mass_composed": 0.40460510237853897,
+        "intermediate_mass_flat": 0.0,
+        "deletion_delta_composed": 0.5011399067805287,
+        "deletion_delta_flat": 0.0
+      },
+      {
+        "query": "nephew(colin,jennifer)",
+        "intermediate": "james",
+        "intermediate_mass_composed": 0.39040554425870305,
+        "intermediate_mass_flat": 0.0,
+        "deletion_delta_composed": 0.9157509941336278,
+        "deletion_delta_flat": 0.0
+      },
+      {
+        "query": "niece(charlotte,arthur)",
+        "intermediate": "victoria",
+        "intermediate_mass_composed": 0.1680224873523974,
+        "intermediate_mass_flat": 0.0,
+        "deletion_delta_composed": 0.4270670794049085,
+        "deletion_delta_flat": 0.0
+      },
+      {
+        "query": "niece(charlotte,jennifer)",
+        "intermediate": "james",
+        "intermediate_mass_composed": 0.5088236291960229,
+        "intermediate_mass_flat": 0.0,
+        "deletion_delta_composed": 0.9221488604512605,
+        "deletion_delta_flat": 0.0
+      }
+    ]
+  }
+}

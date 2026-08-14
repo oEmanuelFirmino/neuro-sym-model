@@ -1,0 +1,326 @@
+{
+  "config": {
+    "dataset": "hinton_family_english_tree_1986",
+    "seeds": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "embedding_dim": 8,
+    "hidden": 16,
+    "epochs": 500,
+    "base_training": "todos os fatos base (sem holdout); derivadas nunca treinadas",
+    "aggregation": "mean \u00b1 pop-std ENTRE sementes (cada valor por semente \u00e9 a m\u00e9dia entre consultas)"
+  },
+  "base_fact_fit_accuracy": {
+    "mean": 0.996780303030303,
+    "std": 0.0015386436372416509,
+    "n": 5
+  },
+  "consistency": {
+    "uncle": {
+      "composed_pos": {
+        "mean": 0.4833031211370266,
+        "std": 0.4294485310497879,
+        "n": 5
+      },
+      "composed_neg": {
+        "mean": 0.0015716550110817158,
+        "std": 0.0006713670353265059,
+        "n": 5
+      },
+      "flat_pos": {
+        "mean": 0.9747516455987156,
+        "std": 0.005968261482808179,
+        "n": 5
+      },
+      "flat_neg": {
+        "mean": 0.0014246253811226097,
+        "std": 0.0005951465171882698,
+        "n": 5
+      }
+    },
+    "aunt": {
+      "composed_pos": {
+        "mean": 0.5559822124407279,
+        "std": 0.45199735363943877,
+        "n": 5
+      },
+      "composed_neg": {
+        "mean": 0.00046353836233836417,
+        "std": 0.0003821546890041496,
+        "n": 5
+      },
+      "flat_pos": {
+        "mean": 0.9701303101817406,
+        "std": 0.00610515720885554,
+        "n": 5
+      },
+      "flat_neg": {
+        "mean": 0.0012259575213333998,
+        "std": 0.0009130105565419476,
+        "n": 5
+      }
+    },
+    "nephew": {
+      "composed_pos": {
+        "mean": 0.6688896018736534,
+        "std": 0.1713224658236994,
+        "n": 5
+      },
+      "composed_neg": {
+        "mean": 0.0011686999660815776,
+        "std": 0.001019301908219786,
+        "n": 5
+      },
+      "flat_pos": {
+        "mean": 0.9722308266361921,
+        "std": 0.008486531358997159,
+        "n": 5
+      },
+      "flat_neg": {
+        "mean": 0.0009036497885823467,
+        "std": 0.0008592743331810426,
+        "n": 5
+      }
+    },
+    "niece": {
+      "composed_pos": {
+        "mean": 0.6769925225337541,
+        "std": 0.1743874769478707,
+        "n": 5
+      },
+      "composed_neg": {
+        "mean": 0.0011617425418177214,
+        "std": 0.001319873061043242,
+        "n": 5
+      },
+      "flat_pos": {
+        "mean": 0.9742382350368182,
+        "std": 0.007419511784803515,
+        "n": 5
+      },
+      "flat_neg": {
+        "mean": 0.000807119700091618,
+        "std": 0.0010820927241169409,
+        "n": 5
+      }
+    }
+  },
+  "explainability": {
+    "intermediate_mass_composed": {
+      "mean": 0.33617705844068574,
+      "std": 0.0693360811836577,
+      "n": 5
+    },
+    "intermediate_mass_flat": {
+      "mean": 0.0,
+      "std": 0.0,
+      "n": 5
+    },
+    "deletion_delta_composed": {
+      "mean": 0.5705351046966797,
+      "std": 0.07882606632056671,
+      "n": 5
+    },
+    "deletion_delta_flat": {
+      "mean": 0.0,
+      "std": 0.0,
+      "n": 5
+    }
+  },
+  "runs": [
+    {
+      "seed": 0,
+      "train_seconds": 2183.5567412376404,
+      "base_fit_accuracy": 0.9981060606060606,
+      "consistency": {
+        "uncle": {
+          "composed_pos": 0.000738609159623488,
+          "composed_neg": 0.0012574301227698003,
+          "flat_pos": 0.9635721364598785,
+          "flat_neg": 0.0016340719797470933
+        },
+        "aunt": {
+          "composed_pos": 0.9211401312688193,
+          "composed_neg": 0.0002733912898762754,
+          "flat_pos": 0.977661117914598,
+          "flat_neg": 0.0006024445892301412
+        },
+        "nephew": {
+          "composed_pos": 0.7355454226402537,
+          "composed_neg": 0.0007767433962736491,
+          "flat_pos": 0.9732722794342901,
+          "flat_neg": 0.00036500501858014665
+        },
+        "niece": {
+          "composed_pos": 0.7527703807442929,
+          "composed_neg": 3.940641921518086e-05,
+          "flat_pos": 0.9734018730743319,
+          "flat_neg": 0.00012834995266895415
+        }
+      },
+      "explainability": {
+        "intermediate_mass_composed": 0.30982304759777185,
+        "intermediate_mass_flat": 0.0,
+        "deletion_delta_composed": 0.5576437545791689,
+        "deletion_delta_flat": 0.0
+      },
+      "n_queries": 8
+    },
+    {
+      "seed": 1,
+      "train_seconds": 2922.076813220978,
+      "base_fit_accuracy": 0.9962121212121212,
+      "consistency": {
+        "uncle": {
+          "composed_pos": 0.00011627642884989057,
+          "composed_neg": 0.0019248755775023569,
+          "flat_pos": 0.9755079809861953,
+          "flat_neg": 0.0011239067275002504
+        },
+        "aunt": {
+          "composed_pos": 0.9220804514014379,
+          "composed_neg": 0.0003257962450927208,
+          "flat_pos": 0.9712660666619966,
+          "flat_neg": 0.0006350062393871156
+        },
+        "nephew": {
+          "composed_pos": 0.4771360267674488,
+          "composed_neg": 0.0003795012306363098,
+          "flat_pos": 0.9774816599600794,
+          "flat_neg": 0.0007918579430502724
+        },
+        "niece": {
+          "composed_pos": 0.481706169452164,
+          "composed_neg": 9.396168196056844e-05,
+          "flat_pos": 0.971957590761778,
+          "flat_neg": 0.0005645922505448626
+        }
+      },
+      "explainability": {
+        "intermediate_mass_composed": 0.24524543574129407,
+        "intermediate_mass_flat": 0.0,
+        "deletion_delta_composed": 0.4567964046754702,
+        "deletion_delta_flat": 0.0
+      },
+      "n_queries": 8
+    },
+    {
+      "seed": 2,
+      "train_seconds": 2549.349775791168,
+      "base_fit_accuracy": 0.9952651515151515,
+      "consistency": {
+        "uncle": {
+          "composed_pos": 0.4944619720988632,
+          "composed_neg": 0.0014498989797810749,
+          "flat_pos": 0.9749304090422115,
+          "flat_neg": 0.0024258986131694225
+        },
+        "aunt": {
+          "composed_pos": 0.004626931617658282,
+          "composed_neg": 0.0012149461588338679,
+          "flat_pos": 0.9590889787648357,
+          "flat_neg": 0.0029156129637742524
+        },
+        "nephew": {
+          "composed_pos": 0.9251328470967543,
+          "composed_neg": 0.0030856336201255732,
+          "flat_pos": 0.9593257984714121,
+          "flat_neg": 0.0001914461324733129
+        },
+        "niece": {
+          "composed_pos": 0.9385241496331744,
+          "composed_neg": 0.0007854777995080066,
+          "flat_pos": 0.9861544404259124,
+          "flat_neg": 0.00021387588583288278
+        }
+      },
+      "explainability": {
+        "intermediate_mass_composed": 0.45734278902826475,
+        "intermediate_mass_flat": 0.0,
+        "deletion_delta_composed": 0.5440203219828602,
+        "deletion_delta_flat": 0.0
+      },
+      "n_queries": 8
+    },
+    {
+      "seed": 3,
+      "train_seconds": 1985.4329495429993,
+      "base_fit_accuracy": 0.9952651515151515,
+      "consistency": {
+        "uncle": {
+          "composed_pos": 0.9653016627136792,
+          "composed_neg": 0.0006100602970522783,
+          "flat_pos": 0.9800176043361094,
+          "flat_neg": 0.0006378883445206562
+        },
+        "aunt": {
+          "composed_pos": 0.9318455799867716,
+          "composed_neg": 0.0003537215668303455,
+          "flat_pos": 0.9726650904844009,
+          "flat_neg": 0.0005076797243437441
+        },
+        "nephew": {
+          "composed_pos": 0.47824820756361286,
+          "composed_neg": 0.00031444787133895605,
+          "flat_pos": 0.983994332734383,
+          "flat_neg": 0.0005966638001152546
+        },
+        "niece": {
+          "composed_pos": 0.4841371218010546,
+          "composed_neg": 0.0036440575459496223,
+          "flat_pos": 0.9764958132509494,
+          "flat_neg": 0.002949348675052696
+        }
+      },
+      "explainability": {
+        "intermediate_mass_composed": 0.3203498750458237,
+        "intermediate_mass_flat": 0.0,
+        "deletion_delta_composed": 0.6997162715853382,
+        "deletion_delta_flat": 0.0
+      },
+      "n_queries": 8
+    },
+    {
+      "seed": 4,
+      "train_seconds": 1882.9172101020813,
+      "base_fit_accuracy": 0.9990530303030303,
+      "consistency": {
+        "uncle": {
+          "composed_pos": 0.9558970852841173,
+          "composed_neg": 0.0026160100783030687,
+          "flat_pos": 0.9797300971691838,
+          "flat_neg": 0.0013013612406756261
+        },
+        "aunt": {
+          "composed_pos": 0.00021796792895221846,
+          "composed_neg": 0.00014983655105861118,
+          "flat_pos": 0.9699702970828712,
+          "flat_neg": 0.0014690440899317462
+        },
+        "nephew": {
+          "composed_pos": 0.7283855053001979,
+          "composed_neg": 0.0012871737120333999,
+          "flat_pos": 0.967080062580796,
+          "flat_neg": 0.0025732760486927475
+        },
+        "niece": {
+          "composed_pos": 0.7278247910380844,
+          "composed_neg": 0.0012458092624552284,
+          "flat_pos": 0.9631814576711195,
+          "flat_neg": 0.0001794317363586941
+        }
+      },
+      "explainability": {
+        "intermediate_mass_composed": 0.3481241447902745,
+        "intermediate_mass_flat": 0.0,
+        "deletion_delta_composed": 0.5944987706605609,
+        "deletion_delta_flat": 0.0
+      },
+      "n_queries": 8
+    }
+  ]
+}

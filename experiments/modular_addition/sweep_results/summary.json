@@ -1,0 +1,88 @@
+{
+  "wd0.05": {
+    "config": {
+      "p": 13,
+      "epochs": 1500,
+      "val_eval_every": 20,
+      "gamma_l1": 0.0001,
+      "embedding_dim": 8,
+      "hidden": 24,
+      "weight_decay": 0.05
+    },
+    "t_g": null,
+    "final_val_accuracy": 0.05084745762711865,
+    "peak_val_accuracy": 0.15254237288135594,
+    "test_accuracy": 0.08333333333333333,
+    "final_l1_penalty": 235.0014253038269,
+    "elapsed_seconds": 768.5353572368622
+  },
+  "wd0.1": {
+    "config": {
+      "p": 13,
+      "epochs": 1500,
+      "val_eval_every": 20,
+      "gamma_l1": 0.0001,
+      "embedding_dim": 8,
+      "hidden": 24,
+      "weight_decay": 0.1
+    },
+    "t_g": null,
+    "final_val_accuracy": 0.05084745762711865,
+    "peak_val_accuracy": 0.15254237288135594,
+    "test_accuracy": 0.06666666666666667,
+    "final_l1_penalty": 234.12490522193227,
+    "elapsed_seconds": 744.9956483840942
+  },
+  "wd0.3": {
+    "config": {
+      "p": 13,
+      "epochs": 1500,
+      "val_eval_every": 20,
+      "gamma_l1": 0.0001,
+      "embedding_dim": 8,
+      "hidden": 24,
+      "weight_decay": 0.3
+    },
+    "t_g": null,
+    "final_val_accuracy": 0.06779661016949153,
+    "peak_val_accuracy": 0.15254237288135594,
+    "test_accuracy": 0.05,
+    "final_l1_penalty": 233.2711830429192,
+    "elapsed_seconds": 736.219978094101
+  },
+  "wd0.1_cap16x64": {
+    "config": {
+      "p": 13,
+      "epochs": 1500,
+      "val_eval_every": 20,
+      "gamma_l1": 0.0001,
+      "embedding_dim": 16,
+      "hidden": 64,
+      "weight_decay": 0.1
+    },
+    "t_g": null,
+    "final_val_accuracy": 0.0847457627118644,
+    "peak_val_accuracy": 0.15254237288135594,
+    "test_accuracy": 0.11666666666666667,
+    "final_l1_penalty": 233.64433447866904,
+    "elapsed_seconds": 2316.218858242035
+  },
+  "wd0.1_neg3": {
+    "config": {
+      "p": 13,
+      "epochs": 1500,
+      "val_eval_every": 20,
+      "gamma_l1": 0.0001,
+      "embedding_dim": 8,
+      "hidden": 24,
+      "weight_decay": 0.1,
+      "negatives_per_positive": 3
+    },
+    "t_g": null,
+    "final_val_accuracy": 0.13559322033898305,
+    "peak_val_accuracy": 0.15254237288135594,
+    "test_accuracy": 0.03333333333333333,
+    "final_l1_penalty": 133.55749661758668,
+    "elapsed_seconds": 1196.472589969635
+  }
+}
