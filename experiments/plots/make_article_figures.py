@@ -260,10 +260,9 @@ def fig2():
     ax.set_ylim(0, 3)
     ax.axis("off")
     blocks = [
-        (r"$[e_a\|e_b\|e_c]$" + "\n(384)", "#fdf1df", ORANGE),
-        ("Linear\n256\nReLU", "#eef2f7", STEEL),
-        ("Dropout\n$p=0.1$", "#eef2f7", STEEL),
-        ("Linear\n256\nReLU", "#eef2f7", STEEL),
+        (r"$[e_a\|e_b\|e_c]$" + "\n(24)", "#fdf1df", ORANGE),
+        ("Linear\n24\nReLU", "#eef2f7", STEEL),
+        ("Linear\n24\nReLU", "#eef2f7", STEEL),
         ("Linear\n1", "#eef2f7", STEEL),
         (r"Sigmoid" + "\n" + r"$f_P \in [0,1]$", "#e6f0e6", GREEN),
     ]
