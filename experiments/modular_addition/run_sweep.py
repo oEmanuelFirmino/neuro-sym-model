@@ -32,6 +32,8 @@ from src.neurosym.tensor.backend import set_backend
 set_backend("numpy")
 logging.disable(logging.CRITICAL)
 
+from joblib import Parallel, delayed
+
 from experiments.modular_addition.run import make_dlg_build_fn
 from experiments.run_multiseed import run_single_seed
 
@@ -59,19 +61,27 @@ def _peak_val_accuracy(epoch_logs):
     return max(vals) if vals else None
 
 
+def _run_config(name: str, kwargs: dict) -> tuple:
+    build_fn = make_dlg_build_fn(**kwargs)
+    t0 = time.time()
+    result = run_single_seed(build_fn, seed=SEED, t_g_threshold=0.95, t_g_patience=2)
+    elapsed = time.time() - t0
+    return name, kwargs, result, elapsed
+
+
 def main():
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     summary = {}
 
-    for name, kwargs in CONFIGS.items():
-        print(f"=== {name}: {kwargs} ===", flush=True)
-        build_fn = make_dlg_build_fn(**kwargs)
-        t0 = time.time()
-        result = run_single_seed(
-            build_fn, seed=SEED, t_g_threshold=0.95, t_g_patience=2
-        )
-        elapsed = time.time() - t0
+    # As 5 configs são independentes entre si (cada uma reconstrói seu próprio
+    # build_fn/dados) -- rodam uma por processo em paralelo em vez de
+    # sequencialmente.
+    print(f"=== rodando {len(CONFIGS)} configs em paralelo ===", flush=True)
+    outcomes = Parallel(n_jobs=-1, backend="loky")(
+        delayed(_run_config)(name, kwargs) for name, kwargs in CONFIGS.items()
+    )
 
+    for name, kwargs, result, elapsed in outcomes:
         with open(OUTPUT_DIR / f"{name}.json", "w", encoding="utf-8") as f:
             json.dump(result, f, indent=2)
 
@@ -86,7 +96,7 @@ def main():
             "elapsed_seconds": elapsed,
         }
         print(
-            f"  T_g: {result['t_g']} | val final: {result['final_val_accuracy']} | "
+            f"  {name}: T_g: {result['t_g']} | val final: {result['final_val_accuracy']} | "
             f"val pico: {peak} | teste: {result['test_accuracy']} | {elapsed:.1f}s",
             flush=True,
         )

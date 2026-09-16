@@ -42,6 +42,7 @@ set_backend("numpy")
 logging.disable(logging.CRITICAL)
 
 import numpy as np
+from joblib import Parallel, delayed
 
 from experiments.hinton_family.domain import (
     BASE_RELATIONS,
@@ -105,7 +106,18 @@ def _mean(values):
 def run_single(seed: int, epochs: int) -> dict:
     """Treina os 12 predicados e avalia consistência + explicabilidade para uma
     única semente, retornando os escalares (média entre consultas) daquela
-    semente. Cada semente reconstrói embeddings, predicados e split do zero."""
+    semente. Cada semente reconstrói embeddings, predicados e split do zero.
+
+    Sementes são independentes entre si, então `main` roda uma por processo em
+    paralelo (joblib/loky). Como o script roda como `__main__`, loky serializa
+    `run_single` via cloudpickle (função definida em `__main__`) em vez de por
+    referência de módulo -- o código de nível de módulo deste arquivo (que
+    fixa a codificação do stdout, o backend de tensor e o nível de log) NÃO
+    reexecuta no worker, então os três são refeitos aqui dentro.
+    """
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    set_backend("numpy")
+    logging.disable(logging.CRITICAL)
     random.seed(seed)
     np.random.seed(seed)
 
@@ -244,7 +256,9 @@ def main():
         flush=True,
     )
     t_start = time.time()
-    runs = [run_single(seed, args.epochs) for seed in seeds]
+    runs = Parallel(n_jobs=-1, backend="loky")(
+        delayed(run_single)(seed, args.epochs) for seed in seeds
+    )
 
     # --- agregação ENTRE sementes (variância de inicialização) ---
     consistency_agg = {

@@ -1,0 +1,20 @@
+{
+  "config": {
+    "device": "cuda",
+    "entities": 2000,
+    "num_relations": 5,
+    "arity": 3,
+    "num_positive_facts": 20000,
+    "embedding_dim": 512,
+    "hidden": 1024,
+    "epochs": 500,
+    "val_eval_every": 10,
+    "seed": 0
+  },
+  "train_facts": 120000,
+  "val_facts": 40000,
+  "test_facts": 40000,
+  "elapsed_seconds": 247.1899697780609,
+  "test_accuracy": 0.506625,
+  "model_path": "/content/experiments/torch_scale/pilot_results/torch_scale_kg_cuda.pt"
+}

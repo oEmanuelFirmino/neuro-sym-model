@@ -10,11 +10,11 @@
       "weight_decay": 0.05
     },
     "t_g": null,
-    "final_val_accuracy": 0.05084745762711865,
-    "peak_val_accuracy": 0.15254237288135594,
-    "test_accuracy": 0.08333333333333333,
-    "final_l1_penalty": 235.0014253038269,
-    "elapsed_seconds": 768.5353572368622
+    "final_val_accuracy": 0.03389830508474576,
+    "peak_val_accuracy": 0.1016949152542373,
+    "test_accuracy": 0.03333333333333333,
+    "final_l1_penalty": 234.46932618273533,
+    "elapsed_seconds": 1179.581714630127
   },
   "wd0.1": {
     "config": {
@@ -27,11 +27,11 @@
       "weight_decay": 0.1
     },
     "t_g": null,
-    "final_val_accuracy": 0.05084745762711865,
-    "peak_val_accuracy": 0.15254237288135594,
-    "test_accuracy": 0.06666666666666667,
-    "final_l1_penalty": 234.12490522193227,
-    "elapsed_seconds": 744.9956483840942
+    "final_val_accuracy": 0.06779661016949153,
+    "peak_val_accuracy": 0.11864406779661017,
+    "test_accuracy": 0.03333333333333333,
+    "final_l1_penalty": 242.85276024487243,
+    "elapsed_seconds": 1178.563648700714
   },
   "wd0.3": {
     "config": {
@@ -44,11 +44,11 @@
       "weight_decay": 0.3
     },
     "t_g": null,
-    "final_val_accuracy": 0.06779661016949153,
+    "final_val_accuracy": 0.11864406779661017,
     "peak_val_accuracy": 0.15254237288135594,
-    "test_accuracy": 0.05,
-    "final_l1_penalty": 233.2711830429192,
-    "elapsed_seconds": 736.219978094101
+    "test_accuracy": 0.03333333333333333,
+    "final_l1_penalty": 240.46575901337687,
+    "elapsed_seconds": 1183.24485373497
   },
   "wd0.1_cap16x64": {
     "config": {
@@ -61,11 +61,11 @@
       "weight_decay": 0.1
     },
     "t_g": null,
-    "final_val_accuracy": 0.0847457627118644,
-    "peak_val_accuracy": 0.15254237288135594,
-    "test_accuracy": 0.11666666666666667,
-    "final_l1_penalty": 233.64433447866904,
-    "elapsed_seconds": 2316.218858242035
+    "final_val_accuracy": 0.05084745762711865,
+    "peak_val_accuracy": 0.0847457627118644,
+    "test_accuracy": 0.1,
+    "final_l1_penalty": 212.5019526365221,
+    "elapsed_seconds": 2304.6379129886627
   },
   "wd0.1_neg3": {
     "config": {
@@ -79,10 +79,10 @@
       "negatives_per_positive": 3
     },
     "t_g": null,
-    "final_val_accuracy": 0.13559322033898305,
-    "peak_val_accuracy": 0.15254237288135594,
-    "test_accuracy": 0.03333333333333333,
-    "final_l1_penalty": 133.55749661758668,
-    "elapsed_seconds": 1196.472589969635
+    "final_val_accuracy": 0.06779661016949153,
+    "peak_val_accuracy": 0.13559322033898305,
+    "test_accuracy": 0.06666666666666667,
+    "final_l1_penalty": 134.94859600586025,
+    "elapsed_seconds": 1558.4097263813019
   }
 }
