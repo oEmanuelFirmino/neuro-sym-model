@@ -215,3 +215,6 @@ test/test_softmax_formulation.py
 
 # Configuração local do editor
 .vscode/
+
+# Checkpoint grande demais para versionar (54MB)
+experiments/torch_scale/colab/torch_scale_kg_cuda.pt
